@@ -1,0 +1,45 @@
+# README note on work9 at /home/bgb/4Lars/README
+# ----------------------------------------------
+# Lars: PLEASE set a logical link to the data8 !
+#       ln -s {wherever}/data8 large/data8
+# then do you have a 'D' compiler ?
+#       https://dlang.org/
+# them 'make go'
+# -------------------------------------
+The drill is like this :
+        make
+        make go
+        make tracks
+        make clean
+# ------------------------------
+The source files are:
+        main.d          # ralfs build disk images, from /data8/sn/###### files.
+          word.d        # PDP10 word
+          track.d       # SAT and RIB of Stanford File System
+        makefile  
+        fetch.sql       # example fetch from DATA base
+        SYS.csv         # example list of SAIL files to fetch from data8/sn/######
+# --------------------------------------------------------
+# output into a local /large
+        large/SYS0/DISK.data8
+        large/SYS0/SYS.csv        
+# track files ( the global /data local to Los Gatos, CA )
+        /data/SYS0/DISK.octal
+        /data/SYS0/track/x000000 # SAT table of disk track allocation
+        /data/SYS0/track/x024999 # `2020-06-22 bgbaumgart@mac.com'
+        /data/SYS0/track/x999999
+# ~/4Lars
+#
+# Results look like this:
+
+bgb@work9$ ls -l ~/4Lars/large/SYS/track | tail -4
+-rw-rw-r-- 1 bgb bgb 30368 2021-03-03 17:37 x023804
+-rw-rw-r-- 1 bgb bgb 30368 2021-03-03 17:37 x023805
+-rw-rw-r-- 1 bgb bgb 30368 2021-03-03 17:37 x023806
+-rw-rw-r-- 1 bgb bgb 30368 2021-03-03 17:37 x023807
+bgb@work9$
+
+Bruce Baumgart
+3 March 2021
+
+`2021-03-03 bgbaumgart@mac.com'
