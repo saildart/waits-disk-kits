@@ -15,7 +15,7 @@ the SAILDART software that generates waits-disk file-system images.
         make tracks
         make clean
 
-# Source files
+## Source files
 
         main.d          # ralfs build disk images, from /data8/sn/###### files.
           word.d        # PDP10 word
@@ -30,13 +30,26 @@ the SAILDART software that generates waits-disk file-system images.
 
 # CKD _Chickadee_ files
 
-The TLA (Three-Letter-Acronym)
-CKD (Count, Key, Data) which is how
-IBM (International Business Machines) stored
-DASD (Direct-Access Storage Device) data.
+The TLA (Three-Letter-Acronym) CKD stands for (Count, Key, Data) which is how
+IBM (International Business Machines) stored DASD (Direct-Access Storage Device) data.
+
+
+# SYS ambiguity
+
+So too the TLA **SYS** has been overused and is so is now almost useless.
+
+* SYS inside WAITS-1974 at montior command level is the [1,3] directory.
+* SYS for Baumgart javascript is a model for the full file system.
+* SYS for Cornwell Github SIM is for individual disk packs.
 
 # Hermaphrodite
 
-A Frankenstein-monster file-system
-formed by sewing together old and new parts
-that Igor has found around the Archive.
+A Frankenstein-monster file-system formed by sewing together all the old and new parts
+that Igor has found around the Saildart Archive.
+
+# named SYS: file sets
+
+name              | date made  |  prg |  ppn | files |  DMP | description
+----------------- | ---------- | ---- | ---- | ----- | -----|-----------------------------------------------
+SYS-medium-people | 2021-03-03 |  520 |  644 |  7243 |  734 | benchmark adequate 1974 with many people named
+SYS-tiny-IDE      | 2021-04... |  ... |  ... |  .... |  ... | minimal system load and assembly tools
