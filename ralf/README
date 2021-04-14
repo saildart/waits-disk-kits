@@ -1,12 +1,14 @@
-# README note on work9 at /home/bgb/4Lars/README
+# README
 # ----------------------------------------------
-# Lars: PLEASE set a logical link to the data8 !
-#       ln -s {wherever}/data8 large/data8
+# Lars: PLEASE set a logical link /KIT pointing ata sub-directory of DASD_KITS.
+#       For example
+#              sudo ln -s /d/large/SYS_KITS/medium-people /KIT
+#
 # then do you have a 'D' compiler ?
 #       https://dlang.org/
-# them 'make go'
+# then 'make go'
 # -------------------------------------
-The drill is like this :
+The make targets are like this :
         make
         make go
         make tracks
@@ -18,11 +20,13 @@ The source files are:
           track.d       # SAT and RIB of Stanford File System
         makefile  
         fetch.sql       # example fetch from DATA base
-        SYS.csv         # example list of SAIL files to fetch from data8/sn/######
 # --------------------------------------------------------
-# output into a local /large
-        large/SYS0/DISK.data8
-        large/SYS0/SYS.csv        
+# Input from /KIT
+        /KIT/SYS.csv        
+# Output into /KIT
+        /KIT/DASD.data8
+        /KIT/DASD.data8.xz
+        /KIT/DASD.octal
 # track files ( the global /data local to Los Gatos, CA )
         /data/SYS0/DISK.octal
         /data/SYS0/track/x000000 # SAT table of disk track allocation
