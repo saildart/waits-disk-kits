@@ -1,8 +1,7 @@
-// pathname /data/Ralph_filebase./main.d
-// makefile /data/Ralph_filebase./makefile
-// -*- coding: utf-8; mode: D; -*-
+// Fetch URL: https://github.com/saildart/waits-disk.git -*- coding: utf-8; mode: D; -*-
+// sub-directory waits-disk/ralf
 // -------------------------------------------------------------------------------------------------
-// Bruce Guenther Baumgart, copyright©2014-2018, license GPLv3.
+// Bruce Guenther Baumgart, copyright©2014-2018,2021 license GPLv3.
 // ------------------------------------------------------------------------------------------------- 
 //                              R       A       L       F
 // Max ------------------------------------------------------------------------------------------- line length
@@ -12,34 +11,44 @@
 /*
   This program is named "RALF" in honor of Ralph E. Gorin,
   who named the pre-Waits PDP-10 file system verification program, RALPH, after himself.
-  A close reading of the RALPH.fai source code enables writing RALF which re-constructs
-  disk images of a file system suitable for the 1974 hardware emulators.
+  A close reading of the RALPH.fai source code had enabled writing this RALF which re-constructs
+  disk images of a file system suitable for 1974 hardware emulators.
   ¶
-  Here we build a PDP-10 SU-AI-Lab system disk image for the logical device named 'SYS:' that is
-  suitable for the 1974 hardware re-enactments (but unsuitable for actual museum grade hardware).
-  The disk-image file-set is specified by database CSV (filename,sn,…) rows
-  The actual PDP-10 binary data is copied from a unix file system mounted at /data8/sn/ (or /data/8/sn)
-  where each serial numbered blob is available as binary 8-bytes per PDP-10 word (zero-left-padded)
-  from 000001 to something like 886781. To verify the highest available blob serial number, sn,
-  execute bash string "(cd /data8/sn;readdir .|sort|tail -1)".
+  Here we build a PDP-10 SU-AI-Lab system disk image for
+  the concatenation of a smallish number of 200 Megabyte IBM-3300 disk packs.
+  One, two, or three packs is reasonable;
+  up to one hundred disk packs is possible to have twenty Gigabytes online
+  which is approximately the total offline capacity of the SAILDART tape archive.
+  suitable for the 1974 hardware re-enactments;
+  but not directly usable on actual museum grade hardware without a further format conversion (IBM CKD / Merlin and Chickadee).
+  The disk-image file-set is specified by a database CSV formated table (filename,sn,…) rows
+  The actual PDP-10 binary data is copied from (SAILDART digital curator accessible)
+  unix file system mounted at pathname /data8/sn/
+  where each serial numbered blob is available in DATA8 format, binary 8-bytes per PDP-10 word (zero-left-padded)
+  from 000001 to something like 886781 or more recently 888474 with more damaged file blobs available in the archive.
+
+  To verify the highest available blob serial number, sn,
+  execute the bash string "(cd /data8/sn;readdir .|sort|tail -1)".
+  Blobs beyond sn# 888888 (the Hong-Kong-Lucky serial-number) are not historically authentic,
+  but have been fabricated to augement the simulated environment.
   ¶
-        track = new TRACK[45600];   // 3 packs × 800. cylinders × 19 tracks per cylinder 458 Megabytes
+        track = new TRACK[45600];   // 3 packs × 800. cylinders × 19 tracks per cylinder is 458 Megabytes
         track = new TRACK[131072];  // example 17-bit track-address space 2.3 Gigabytes
         track = new TRACK[262144];  // max out 18-bit track-address space 4.6 Gigabytes
   ¶
-  NOTE: The System J17 Directory Entry LOC Location Track-Address Space is 30-bit internally,
-  since it supports a generous 6-bit low order sector address,
-  when the Re-Enactment might require 30-bit or 36-bit Track addresses,
-  it will be easy to halve the number of tracks per GROUP.
+  NOTE: The System J17 Directory Entry LOC Location Track-Address Space is 30-bits internally,
+  since it supports a generous 6-bit low order sector address.
+  If a huge DASD for the Re-Enactment is required,
+  30-bit or even 36-bit Track addresses could be implemented.
   ¶
-  Also we may implement file content indirection, with -sn for file-entry LOC location,
-  so the initial track space needs to only hold directory data,
-  and blobs are loaded into tracks (or track cache) at simulation time.
+  Also we may implement file content indirection, with negative -sn for file-entry LOC location,
+  so the initial track space needs to only hold the UFD directory data,
+  and blobs are loaded into tracks (or into a track cache) at simulation time.
   ● expect fewer than 2000 programmer codes
   ● expect fewer than 8000 ppn codes
   ● expect fewer than 1 million data blobs, unique sn#
   ● expect fewer than 2 million filename_ppn, would needs 500000 PDP10 words (=217 full tracks)
-  ● tolerate 32000 ppn codes in order to handle versions over 20 years (=240 months).
+  ● tolerate 32000 ppn codes in order to handle versions for the 20 year SAILDART epoch (=240 months).
   */
 import std.stdio;
 import std.conv;
