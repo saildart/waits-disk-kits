@@ -5,11 +5,12 @@
 At present, April 2021, this repository is a parking lot for re-factoring
 the SAILDART storage management software that generates waits-disk file-system images for simulators.
 I have promised myself two (or more) usable WAITS disk-image kits by the end of this month, April 2021.
-- BgBaumgart.
+BgBaumgart.
 
 <!-- # Shortcuts -->
 
-# RALF - Ralph Gorin WAITS File System Model
+# RALF - makes one DASD.data8 file
+## Ralph Gorin WAITS File System Model
 
 See the README file with no extension.
 RALF requires 'D' language tools and curator access to a saildart archive VAULT mount point.
@@ -18,8 +19,7 @@ and is based on my saildart.org site work from 2014.
 RALF might be useful as documentation for people who read 'D' code.
 The original PDP-10 code basis for RALF
 is at https://www.saildart.org/[J18,SYS]/
-and the RALPH program source is in the directory at https://www.saildart.org/[ACT,REG]/
-- amen. BgBaumgart April 2021.
+and the RALPH program source is in the directory at https://www.saildart.org/[ACT,REG]/ amen. BgBaumgart April 2021.
 
 <!--
   The drill is like this :
@@ -42,12 +42,12 @@ and the RALPH program source is in the directory at https://www.saildart.org/[AC
 # Tracks - the term for the SAIL-WAITS notion of disk block
 -->
 
-# CKD _Chickadee_ disk pack files
+# _Chickadee_ makes CKD disk pack files
 
 The TLA (Three-Letter-Acronym) CKD stands for (Count, Key, Data) which is how
 IBM (International Business Machines) stored DASD (Direct-Access Storage Device) data.
 
-# SYS ambiguity
+# SYS: ambiguity
 
 The TLA (Three-Letter-Acronym) **SYS** has been overused and has now (2021) become useless.
 The term **SYS** is always context dependent.
@@ -101,3 +101,4 @@ medium-MUSIC         |
 large-CSP-19??       | SAIL WAITS systems software for a given year
 huge-all             | all version2 of every file 1972 to 1990
 
+# example bash fingering to use a disk-kit
