@@ -121,10 +121,10 @@ ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string path
   //
   auto m = 2304*8;      // max blob size in bytes per track data area
   try {
-    blob = read("/KIT/data8/sn/"~sn);
+    blob = read("/data8/sn/"~sn);
   }
   catch (Throwable){
-    stderr.writefln("read file FAILED "~"/KIT/data8/sn/"~sn);
+    stderr.writefln("read file FAILED "~"/data8/sn/"~sn);
     return 0;
   }
   auto y = blob.length; // blob size from reading the archive file
@@ -297,10 +297,10 @@ int main()
   // track = new TRACK[131072]; // 17-bit 2.3 Gigabytes (huge-old-disk-image fits in current-memory)
   // track = new TRACK[262144]; // 18-bit 4.6 Gigabytes (huge-old-disk-image fits in current-memory)
   track = new TRACK[220144];
-  stderr.writefln("track.length = %d which is %d bytes", track.length, TRACK.sizeof );
+  stderr.writefln("Maximum number of tracks = %d each track is %d bytes", track.length, TRACK.sizeof );
   double Megabytes = (to!float(track.length) * TRACK.sizeof) / pow(2,20);
   double Gigabytes = (to!float(track.length) * TRACK.sizeof) / pow(2,30);
-  stderr.writefln("disk image size = %8.3f Megabytes = %8.3f Gigabytes", Megabytes, Gigabytes );
+  stderr.writefln("Maximum DASD size = %8.3f Megabytes = %8.3f Gigabytes", Megabytes, Gigabytes );
   // ====================================================================================== //
   // MFD
   //    The first file is the Master File Directory named '  1  1.UFD'.
@@ -326,8 +326,8 @@ int main()
   // the same PRG code over the years, all such people are assigned numeric PRG codes
   // which (except for 1,2,3 and 100) went unused at Stanford.
   //
-  stdout.writeln("\n===  Read SYS.csv ===");
-  auto infile = File("/KIT/SYS.csv","r");
+  stdout.writeln("\n===  Read ralf.csv ===");
+  auto infile = File("./KIT/ralf.csv","r");
   int file_count;
   int val;string nam,ln;
   char[]project,programmer,filename,extension,sn;
@@ -453,8 +453,8 @@ int main()
   track[1].ufdent[0].ext        = sixbit_ufd;
   track[1].ufdent[0].track      = 1;
   // Write binary disk image using 64-bits for each 36-bit PDP-10 word.
-  stdout.writeln("\n===  Writing /KIT/DASD.data8 ===");
-  auto outfile = File("/KIT/DASD.data8","wb");
+  stdout.writeln("\n===  Writing ./KIT/DASD.data8 ===");
+  auto outfile = File("./KIT/DASD.data8","wb");
   track.length = free_track+1;
   outfile.rawWrite(track);
   outfile.close();

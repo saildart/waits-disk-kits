@@ -1,14 +1,14 @@
  README
 # ----------------------------------------------
-# Lars: PLEASE set a logical link /KIT pointing ata sub-directory of DASD_KITS.
+# Lars: PLEASE set a logical link ./KIT pointing at a kit sub-directory in waits-disk-kits
 #       For example
-#              sudo ln -s /d/large/SYS_KITS/medium-people /KIT
+#              sudo ln -s ../medium-people ./KIT
 #
 # then do you have a 'D' compiler ?
 #       https://dlang.org/
 # then 'make go'
 # -------------------------------------
-The make targets are like this :
+The make targets go like this :
         make
         make go
         make tracks
@@ -21,19 +21,22 @@ The source files are:
         makefile  
         fetch.sql       # example fetch from DATA base
 # --------------------------------------------------------
-# Input from /KIT
-        /KIT/SYS.csv        
+# Input from ./KIT
+        ./KIT/ralf.csv        
 # Output into /KIT
-        /KIT/DASD.data8
-        /KIT/DASD.data8.xz
-        /KIT/DASD.octal
-# track files ( the global /data local to Los Gatos, CA )
+        ./KIT/DASD.data8
+
+
+# and then if needed
+        ./KIT/DASD.data8.xz
+        ./KIT/DASD.octal
+        
+# the track files ( the global /data local to Los Gatos, CA )
         /data/SYS0/DISK.octal
         /data/SYS0/track/x000000 # SAT table of disk track allocation
         /data/SYS0/track/x024999 # `2020-06-22 bgbaumgart@mac.com'
         /data/SYS0/track/x999999
-# ~/4Lars
-#
+        
 # Results look like this:
 
 bgb@work9$ ls -l ~/4Lars/large/SYS/track | tail -4

@@ -13,12 +13,12 @@
 SRC = main.d track.d word.d
 
 main: ${SRC}
-	@ls -l /KIT || (echo You need a symlink /KIT to point to a WAITS_DASD_KITS sub-directory && false)
+	@ls -l ./KIT || (echo You need a symlink ./KIT to a ../kit-sub-directory && false)
 	dmd -unittest -J. main.d
 
 go: ${SRC}
-	@ls -l /KIT || (echo You need a symlink /KIT to point to a WAITS_DASD_KITS sub-directory && false)
-	dmd -J. -run main.d 1>/KIT/Ralf.log
+	@ls -l ./KIT || (echo You need a symlink ./KIT to a ../kit-sub-directory && false)
+	dmd -J. -run main.d 1>./KIT/ralf.log
 
 # ----------------------------------------------------------------------------------------------------
 # Input from /KIT/SYS.csv
@@ -33,8 +33,8 @@ print:
 clean:
 	rm -f *~ main main.o
 purge:
-	rm -f *~ main main.o /KIT/DASD.data8 /KIT/DASD.octal /KIT/Ralf.log
-	rm -rf /KIT/track
+	rm -f *~ main main.o ./KIT/DASD.data8 ./KIT/DASD.octal ./KIT/ralf.log
+	rm -rf ./KIT/track
 
 # ----------------------------------------------------------------------------------------------------
 # Fetch / select FROM SAILDART database
@@ -44,10 +44,10 @@ purge:
 #	mysql -A saildart < fetch.sql
 # ----------------------------------------------------------------------------------------------------
 tracks:
-	od -An -vto8 -w8 /KIT/DASD.data8 | cut -c12- > /KIT/DASD.octal
-	rm -rf     /KIT/track
-	mkdir -p   /KIT/track
-	(cd /KIT/track;split --lines=2336 --numeric-suffixes --suffix-length=6 /KIT/DASD.octal)
+	od -An -vto8 -w8 ./KIT/DASD.data8 | cut -c12- > ./KIT/DASD.octal
+	rm -rf     ./KIT/track
+	mkdir -p   ./KIT/track
+	(cd ./KIT/track;split --lines=2336 --numeric-suffixes --suffix-length=6 ./KIT/DASD.octal)
 
 # The default DASD sample consists of selected
 # CSV lines from database mysail for the following 25. programmer codes
