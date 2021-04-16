@@ -1,7 +1,7 @@
 #if 0 // -*- mode:C; coding:utf-8; -*-
 NAME="load_ckd_from_data8"
-SRC="KIT/src"
-DST="KIT/bin"
+SRC="."
+DST="../bin"
 #           -Wall
 gcc -g -m64       -Werror -o $DST/$NAME  $SRC/$NAME.c && echo OK || echo FAILED
 echo $DST/$NAME
@@ -59,9 +59,9 @@ main(int argc, char *argv[]) {
     FILE  *disk;
     int   cyl, hd, rec, pos, i, sector;
 
-    fd = open("/KIT/DASD.data8",O_RDONLY);
+    fd = open("./KIT/DASD.data8",O_RDONLY);
     if(fd<0){
-      fprintf(stderr,"File /KIT/DASD.data8 NOT found\n");
+      fprintf(stderr,"File ./KIT/DASD.data8 NOT found\n");
       exit(1);
     }
     memset(&hdr, 0, sizeof(struct pmp_header));
@@ -73,7 +73,7 @@ main(int argc, char *argv[]) {
     tsize = hdr.tracksize * hdr.heads;
     if ((cbuf = (uint8 *)calloc(tsize, sizeof(uint8))) == 0)
          return 1;
-    strcpy(name, "diskpack_readonly_000.ckd");
+    strcpy(name, "./KIT/0.ckd");
     while (!last) {
         disk = fopen(name, "w");
 fprintf(stderr, "%s: ", name);

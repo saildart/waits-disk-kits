@@ -1,7 +1,7 @@
 #if 0 // unload_chickadee.c -*- mode:C; coding:utf-8; -*-
 NAME="unload_ckd"
-SRC="/KIT/src"
-DST="/KIT/bin"
+SRC="."
+DST="../bin"
 #           -Wall
 gcc -g -m64       -Werror -o $DST/$NAME  $SRC/$NAME.c && echo OK || echo FAILED
 echo $DST/$NAME
@@ -139,11 +139,11 @@ omit_spaces(char *q)
 
 /* P A S S 1
   --------------------------------------------------------------------------- 80 ...... 90 ..... 100
-  Linear scan of the Cornwell SYS000.ckd disk images input from the current directory.
-  Scan 1 to 8 packs, 800 cylinders, 19 heads; net 15200 tracks per pack.
+  Linear scan of the Cornwell 0.ckd to 9.ckd diskpack input from ./KIT/ directory.
+  Scan up to 10 packs, 800 cylinders, 19 heads; net 15200 tracks per pack.
   Each track header is a 32 PDP10 word RIB, Retrieval Information Block,
   followed by up to 2304. PDP10 words of SAIL-WAIT file content.
-  The Cornwell SIMS IBM disk format has further bytes for address markers and zero padding.
+  The Cornwell SIMS IBM disk format has additional bytes for address markers and zero padding.
  */
 void
 pass1(){
@@ -184,11 +184,11 @@ pass1(){
   struct stat statbuf;
   char zip288[288]="";
     
-  csv = fopen("ckd.csv","w");
-  strcpy(name,"SYS000.ckd");
+  csv = fopen("./KIT/ckd.csv","w");
+  strcpy(name,"./KIT/0.ckd");
 
-  if(stat("SYS",  &statbuf) && errno==ENOENT) mkdir("SYS",  0777);
-  if(stat("track",&statbuf) && errno==ENOENT) mkdir("track",0777);
+  if(stat("./KIT/UCFS",  &statbuf) && errno==ENOENT) mkdir("./KIT/UCFS", 0777);
+  if(stat("./KIT/track", &statbuf) && errno==ENOENT) mkdir("./KIT/track",0777);
   
   for(unit=0;unit<2;unit++){
     disk = fopen(name, "r");
@@ -286,7 +286,7 @@ pass1(){
         sixbit_halfword_into_ascii_(   prg, rib.prg,    sixbit_ppn   );
         
         // destination directory
-        sprintf(  dir, "SYS/%s.%s", prg, prj );
+        sprintf(  dir, "./KIT/UCFS/%s.%s", prg, prj );
         omit_spaces( dir );
         if(stat(dir,&statbuf) && errno==ENOENT) mkdir(dir,0777);
 
@@ -335,7 +335,8 @@ pass1(){
         }
         
         if( track_offset < 0 ){
-          //  fprintf(stderr,"\nFinal track+1 is x%06d. End of diskpack named %s.\n",track,name);continue;
+          fprintf(stderr,"\nFinal track+1 is x%06d. End of diskpack named %s.\n",track,name);
+          goto FINAL;
           fprintf(stderr,"\nBAD RETREIVAL %s\n current track x%06d not found in RIB DDPTR table\n",
                   path,
                   track);
@@ -439,10 +440,11 @@ pass1(){
       } // heads
     } // cylinders
     fclose(disk);
-    name[5]++;
+    name[strlen(name)-5]++;
   } // units (i.e. disk packs mounted in a drive)
+ FINAL:
   if(o)close( o );
-  fclose(csv);
+  if(csv)fclose(csv);
 }
 
 int
