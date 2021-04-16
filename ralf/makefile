@@ -49,7 +49,7 @@ tracks:
 	mkdir -p   ./KIT/track
 	(cd ./KIT/track;split --lines=2336 --numeric-suffixes --suffix-length=6 ./KIT/DASD.octal)
 
-# The default DASD sample consists of selected
+# One DASD sample consisted of selected
 # CSV lines from database mysail for the following 25. programmer codes
 # ------------------------------------- #
 #   2   3 SYS AIL DOC LSP BGB DEK	# Already marked as 'pub' available on the SAILDART
@@ -57,5 +57,12 @@ tracks:
 # DAV DCS RFS HPM TES TVR		# Smith Swinehart Sproull Moravec Tesler Tovar
 #   H  WD RWG				# Holloway Diffie Gosper
 # JMC LES				# Principal Investigator and the Executive Director
+# ------------------------------------- #
+fetch:
+	@echo ";\n; EXAMPLE commands to fetch a table of filenames . . .\n;\n\
+	sudo rm -f /var/tmp/ralf.csv\n\
+	time(cat fetch.sql | mysail -N)\n\
+	wc -l /var/tmp/ralf.csv\n\
+	mv /var/tmp/ralf.csv YOUR_NEW_KIT\n"
 # ------------------------------------- #
 # EOF
