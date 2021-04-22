@@ -1,5 +1,7 @@
 #if 0 // -*- mode:C;coding:utf-8;  -*-
-NAME="rebuild-sys-mfd"
+NAME="rebuild-mfd"
+  SRC=""
+  DST="/usr/local/bin"
   echo gcc -g -m64 -Wall -Werror -Wno-unused-label -o /usr/local/bin/$NAME $NAME.c
   
   gcc -g -m64 -o /usr/local/bin/$NAME $NAME.c
@@ -7,30 +9,31 @@ NAME="rebuild-sys-mfd"
   return 2>/dev/null || exit 0
 #endif
   /*
-    /data/Toy.Ten/rebuild-sys-mfd.c
+    name now: waits-disk-kits/chickadee
+    name nee: /data/Toy.Ten/rebuild-sys-mfd.c
     ============================================================================================ 100
-    R E B U I L D     S Y S     M F D
+    R E B U I L D     M F D
     KIT
     ============================================================================================ 100
     Scan the Linux file system starting from
-    KIT/ucfs
+    ./KIT/UCFS
     in the current work directory
     and regenerate the [1,1] files named <Project><Programmer>.UFD
     Short prj codes and prg codes are padded with underbar rather than space.
 
     1. Empty.
 
-    Starting with an empty SYS directory, the rebuild will
+    Starting with an empty KIT directory, rebuild will
     make a new 1.1 directory with a single UFD file, which mentions itself.
     Underbars will replace SAIL-WAITS leading space padding.
-    SYS/                    # reënact SYS:
-    SYS/1.1/                # directory of directories
-    SYS/1.1/.__1__1.UFD     # data8 binary
-    SYS/1.1/__1__1.UFD      #  utf8 text
+    KIT/UCFS/                    # reënact SYS:
+    KIT/UCFS/1.1/                # directory of directories
+    KIT/UCFS/1.1/.__1__1.UFD     # data8 binary
+    KIT/UCFS/1.1/__1__1.UFD      #  utf8 text
 
     2. Idempotent.
 
-    Rebuilding mulitple times leaves the SYS files unchanged,
+    Rebuilding multiple times leaves the KIT/UCFS files unchanged,
     except for all the SAIL WAITS created/written dates inside the *.UFD files
     and the GNU/linux file system dates ( -mtime -ctime -atime ).
 
@@ -44,20 +47,20 @@ NAME="rebuild-sys-mfd"
     large :
     extra-large :
 
-    4. Device directories as prj-codes under prg-code 'DEV.'
+    4. Additional so-called Device directories as prj-codes under prg-code 'DEV.'
     Add device named directories:
 
-    SYS/DEV.CTY/
-    SYS/DEV.TTY/
+    KIT/UCFS/DEV.CTY/
+    KIT/UCFS/DEV.TTY/
 
-    SYS/DEV.LPT/
-    SYS/DEV.XGP/
+    KIT/UCFS/DEV.LPT/
+    KIT/UCFS/DEV.XGP/
 
-    SYS/DEV.VDS/
-    SYS/DEV.DKB/
+    KIT/UCFS/DEV.VDS/
+    KIT/UCFS/DEV.DKB/
 
-    SYS/DEV.PTR/
-    SYS/DEV.PTP/
+    KIT/UCFS/DEV.PTR/
+    KIT/UCFS/DEV.PTP/
   */
 #include <dirent.h>
 #include <fcntl.h>
@@ -251,17 +254,17 @@ compare_ufd_p(const void *v1, const void *v2){
 }
 
 void pass_one(){
-  FILE *mfd_text; // write text version of the MFD into SYS/1.1/__1__1.UFD
+  FILE *mfd_text; // write text version of the MFD into KIT/UCFS/1.1/__1__1.UFD
   DIR *users, *files;
   struct dirent *user, *file;
-  char ppn_path[1024]; // SYS/1.1/BGB__1/
-  char filepath[1024]; // SYS/BGB__1/FILNAM.EXT
+  char ppn_path[1024]; // KIT/UCFS/1.1/BGB__1/
+  char filepath[1024]; // KIT/UCFS/BGB__1/FILNAM.EXT
   char prog[8], proj[8], filnam[8], ext[8];
   char ppn_ufd[12];  // "BGB__1"
   int i,n;
   //
-  users = opendir("SYS/");
-  // For linux directories in SYS/ that match numeric uppercase "PRG.PRJ" appearance and length
+  users = opendir("KIT/UCFS/");
+  // For linux directories in KIT/UCFS/ that match numeric uppercase "PRG.PRJ" appearance and length
   while (users && (user = readdir(users)) )
     {
       char *dir_name = user->d_name;
@@ -275,7 +278,7 @@ void pass_one(){
       // printf("user %s\n", user->d_name );
       if( n==2 ){
         sprintf( ppn_ufd, "%3.3s%3.3s", prog, proj );
-        sprintf( ppn_path, "SYS/%s/", user->d_name );
+        sprintf( ppn_path, "KIT/UCFS/%s/", user->d_name );
         printf( "ppn_path %s\n",ppn_path);        
         set_mfd_filnam_ext( &MFD[ppn_cnt], ppn_ufd, "UFD" );
         space_to_underbar( ppn_ufd );           
@@ -295,7 +298,7 @@ void pass_one(){
             n = sscanf( name,".%6[0-9A-Z_].%3[0-9A-Z]", filnam, ext );
             if(n==1 || n==2)
               {
-                sprintf( filepath, "SYS/%s/%s", user->d_name, file->d_name );
+                sprintf( filepath, "KIT/UCFS/%s/%s", user->d_name, file->d_name );
                 // printf("filepath %s\n",filepath);
                 set_ufd_filnam_ext( &UFD[file_cnt], filnam, ext );
                 file_cnt++;
@@ -307,8 +310,8 @@ void pass_one(){
         {
           int m;
           char ufd_path[32];
-          // sprintf( mfd_path, "SYS/1.1/.__1__1.UFD" );
-          sprintf( ufd_path, "SYS/1.1/.%6.6s.UFD", ppn_ufd );
+          // sprintf( mfd_path, "KIT/UCFS/1.1/.__1__1.UFD" );
+          sprintf( ufd_path, "KIT/UCFS/1.1/.%6.6s.UFD", ppn_ufd );
           printf("ufd_path = %s\n", ufd_path );
           m = open( ufd_path, O_CREAT|O_TRUNC|O_WRONLY,0644 ); 
           write( m, UFD, file_cnt*sizeof(UFD_t));
@@ -317,7 +320,7 @@ void pass_one(){
         }
         {
           char ufd_text_path[32];
-          sprintf( ufd_text_path, "SYS/1.1/%6.6s.UFD", ppn_ufd );
+          sprintf( ufd_text_path, "KIT/UCFS/1.1/%6.6s.UFD", ppn_ufd );
           FILE *ufd_text = fopen( ufd_text_path,"w");
           for(i=0;i<file_cnt;i++){
             u64 z = (u64)UFD[i].filnam;
@@ -350,7 +353,7 @@ void pass_one(){
   printf("%6d directories\n%6d files\n", ppn_cnt, file_cnt_total );
   qsort( &MFD[0], ppn_cnt, sizeof(UFD_t), compare_ufd_p );
 
-  mfd_text = fopen("SYS/1.1/__1__1.UFD","w");
+  mfd_text = fopen("KIT/UCFS/1.1/__1__1.UFD","w");
   for(i=0;i<ppn_cnt;i++){
     u64 z = (u64)MFD[i].filnam;
     char zz[8];
@@ -381,11 +384,11 @@ void pass_two(){
     printf("%s\n",ep->d_name);
     if((*ep->d_name!='.') && strlen(ep->d_name)<=7)
       {
-        sprintf( ppn_path, "SYS/%s/", ep->d_name );
+        sprintf( ppn_path, "KIT/UCFS/%s/", ep->d_name );
         puts( ppn_path );
         dp2 = opendir( ppn_path );
           
-        sprintf( ufd_path, "SYS/1.1/.%s/", ep->d_name );
+        sprintf( ufd_path, "KIT/UCFS/1.1/.%s/", ep->d_name );
         while (dp2 && (ep2 = readdir (dp2)))
           {
             printf("   %s\n",ep->d_name);              
@@ -410,35 +413,36 @@ int
 main (void)
 {
   int i,m,o;
-  char mfd_path[32]; // always        SYS/1.1/.__1__1.UFD
-  char ppn_path[32]; // example       SYS/BGB.1/               directory linux
-  char ufd_path[32]; // example       SYS/1.1/.BGB__1.UFD      directory WAITS for [1,BGB]
+  char mfd_path[32]; // always        KIT/UCFS/1.1/.__1__1.UFD
+  char ppn_path[32]; // example       KIT/UCFS/BGB.1/               directory linux
+  char ufd_path[32]; // example       KIT/UCFS/1.1/.BGB__1.UFD      directory WAITS for [1,BGB]
   char *filnam,*ext;
   DIR *dp,*dp11;
   DIR *dp2;
   struct dirent *ep,*ep2;
   struct stat statbuf;
 
-  dp = opendir("SYS/");
+  dp = opendir("./KIT/UCFS");
   if(!dp){
     puts(
          "\n"
-         "   SYS link or SYS directory NOT found in your current working directory !\n\n"
-         "   Do the 'mkdir SYS' yourself to start a virgin SAIL WAITS public SYS file environment - or -\n"
+         "   ./KIT/UCFS link NOT found in your current working directory !\n\n"
+         "   Do the 'mkdir -p ./KIT/UCFS' yourself to start a virgin kit\n"
+         "   for a SAIL WAITS disk file kit environment - or -\n"
          "   link to an existing FS, Franken-Stein File System, 'ln -s /d/large/ucfs SYS' - or -\n"
-         "   cd to the working directory where you should have been.\n"
+         "   cd to the working directory, where you should have been.\n"
          "\n"
          );
   }
-  if(stat("SYS/1.1",&statbuf) && errno==ENOENT) mkdir("SYS/1.1",0777);
+  if(stat("KIT/UCFS/1.1",&statbuf) && errno==ENOENT) mkdir("KIT/UCFS/1.1",0777);
   
   // Write brand new MFD __1__1.UFD Master File Directory
   // with an entry for each [ Project , Programmer ] area found under SYS
-  dp11 = opendir("SYS/1.1");
+  dp11 = opendir("KIT/UCFS/1.1");
   
   pass_one();
   
-  sprintf( mfd_path, "SYS/1.1/.__1__1.UFD" );
+  sprintf( mfd_path, "KIT/UCFS/1.1/.__1__1.UFD" );
   m = open( mfd_path, O_CREAT|O_TRUNC|O_WRONLY,0644 ); 
   write(m,MFD,ppn_cnt*sizeof(UFD_t));
   

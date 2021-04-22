@@ -47,7 +47,7 @@ tracks:
 	od -An -vto8 -w8 ./KIT/DASD.data8 | cut -c12- > ./KIT/DASD.octal
 	rm -rf     ./KIT/track
 	mkdir -p   ./KIT/track
-	(cd ./KIT/track;split --lines=2336 --numeric-suffixes --suffix-length=6 ./KIT/DASD.octal)
+	(cd ./KIT/track;split --lines=2336 --numeric-suffixes --suffix-length=6 ../DASD.octal)
 
 # One DASD sample consisted of selected
 # CSV lines from database mysail for the following 25. programmer codes

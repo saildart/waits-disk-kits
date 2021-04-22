@@ -20,9 +20,10 @@ also written by Ralph Gorin.
 
 The SAIL disk file system in July 1974 was implemented for an IBM-3330 with four removable disk packs.
 By the end of July the double density 200 Megabyte packs had been deployed.
-Three of the disk pack positions where used for the public shared file system, SYS: device.
-The fourth pack position served either as a private project UDP, User Disk Pack,
-or as the swap device when the Librascope swapping disk was unavailable.
+Three of the disk pack positions where used for the public shared file system DSK:
+whilst the fourth pack position served either as a private project UDP:, User Disk Pack,
+or as the swap device when the Librascope swapping disk was unavailable. In 1974 the device name "SYS:"
+was equivalenced to DSK:[1,3] the CUSP executible binary directory. CUSP, Commonly Used System Program.
 
 A brief narrative of the physical IBM disk terminology of 1974 into the local Stanford software vocabulary, 
 goes as follows: There are 4 disk packs, each pack has 800. cylinders, each cylinder has 19. tracks.
@@ -34,7 +35,7 @@ Octal notation was always the default in assembly language in 1974 on PDP-10 sys
 
 Another PDP-10 vocabulary trap is the term 'byte' which in DSKSER refers to filling and emptying
 a buffer using the variable width ILDB and IDPB opcodes to move 7-bit characters or 36-bit words.
-The phrase "byte count" in DSKSER comments is a hazard for a modern code reader.
+The two token phrase "byte_count" in DSKSER comments is a hazard for a modern code reader.
 
 Track Zero was the SAT, Storage Allocation Table. It carried a 57. word header, followed by 1267. words
 for storage allocation track bits, a bit value of 1 indicates that a track is in use.
@@ -51,10 +52,25 @@ All such disk directory files where comprised of four word UFD entries containin
         the date time last written and 
         a track number where the file content begins.
 
-In 1974 there are 68,369 file name entries, with 60,489 different content blobs.
+The 1974 surviving files preserved by the DART tapes
+have around 50,000 distinct file name entries, with 65,000 distinct blob content.
+There are more blobs than names because a file's content changes over time, the "version" phenomena.
+The population of all the DART archive files available at end-of-year 1974 is 140,000 blobs with 100,000 names;
+since the DART tapes started in October 1972 and in addition a number of earlier 
+files were brought back online (and then archived) from
+others tape formats or via the primitive ARPA net.
+
 In 1974 at Stanford A.I. there was no mechanism for hard linking multiple file names
-to one file content track as is done in a GNU/Linux file systems.
-So, sad to say, redundant content occupied disk space for each copy.
+to one file content track as is done in GNU/Linux file systems.
+So, sad to say, redundant content occupied additional disk space for each exact copy.
+Also, sad to say, the trade off between variable file size statistics
+and the somewhat large fixed block size (fixed track size) leads to a further loss of disk space
+to empty padding of underfilled tracks.
+
+An example is the damn Form-Feed-File
+which contains a single formfeed character, octal 014;
+that is where an eight bit byte of data occupies a full 2336 word track,
+10,512 bytes of disk space, and appears 111 times in the archive.
 */
 
 struct SATHEAD // Storage Allocation Table, sacred track zero

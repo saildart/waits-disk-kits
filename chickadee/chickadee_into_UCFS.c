@@ -1,10 +1,10 @@
-#if 0 // unload_chickadee.c -*- mode:C; coding:utf-8; -*-
-NAME="unload_ckd"
+#if 0 // unload_ckd_into_UCFS.c -*- mode:C; coding:utf-8; -*-
+NAME="unload_ckd_into_UCFS"
 SRC="."
 DST="../bin"
 #           -Wall
-gcc -g -m64       -Werror -o $DST/$NAME  $SRC/$NAME.c && echo OK || echo FAILED
-echo $DST/$NAME
+gcc -g -m64       -Werror -o $DST/$NAME  $SRC/$NAME.c && echo -n OK||echo -n FAILED
+echo " $DST/$NAME"
 return 2>/dev/null || exit 0
 #endif
 // gcc -g -o unload_ckd unload_ckd.c
@@ -164,6 +164,9 @@ pass1(){
   */
   char fnam[8], extn[4];                                // from UFD file in [1,1] area
   char prg[4], prj[4], filnam[8], ext[4];       // from RIB track
+  
+  char file_name[32]; // underbars replaces spaces for [1,1] and [2,2] file names
+
   char ppname[32]="";
   char dir[32]="",path[128]="",oldpath[64]="";
   char userpath[40];
@@ -292,23 +295,22 @@ pass1(){
 
         // destination FILNAM.EXT with special handling for embedded spaces in [1,1] and [2,2] filenames
         {
-          char name[32];
           int flag = (rib.prj==021 && rib.prg==021) || (rib.prj==022 && rib.prg==022);
           if(flag){
-            sprintf( name, "%3.3s%3.3s%s%s",
+            sprintf( file_name, "%3.3s%3.3s%s%s",
                      filnam + ( flag ? 3 : 0 ), // for UNIX swap-halves so Filename.UFD is Programmer-code then Project-code.
                      filnam + ( flag ? 0 : 3 ),
                      (rib.ext ? ".":""), ext );
-            space_to_underbar( name );
+            space_to_underbar( file_name );
           }else{
-            sprintf( name, "%s%s%s", filnam, (rib.ext ? ".":""), ext );
+            sprintf( file_name, "%s%s%s", filnam, (rib.ext ? ".":""), ext );
           }
-          sprintf( path, "%s/.%s", dir, name );
+          sprintf( path, "%s/.%s", dir, file_name );
           omit_spaces( path );
         }
         
         // Reënacted ribs lack the bookkeepping data written by the authentic DART on WAITS.
-        if(0){
+        if(1){
           fprintf(stdout,"%lld.c_date ",   (uint64)rib.c_date );
           fprintf(stdout,"%lld.date_lo ",  (uint64)rib.date_lo );
           fprintf(stdout,"%lld.time ",     (uint64)rib.time );
@@ -409,6 +411,7 @@ pass1(){
             o = open( path, O_CREAT | O_WRONLY, 0664 ); if(o<0)perr( path );
             fprintf(stdout,"    open %s\n",path);
             strcpy( oldpath, path );
+            fprintf(csv,"%3s.%3s %-10s,%7d,  %-30s,\n",prg,prj,file_name,wrdcnt,path);
           }else{
             fprintf(stdout,"continue %s\n",path);
           }

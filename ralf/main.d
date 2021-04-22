@@ -10,27 +10,31 @@
 // -----------------------------------------------------------------------------------------------------------
 /*
   This program is named "RALF" in honor of Ralph E. Gorin,
-  who named the pre-Waits PDP-10 file system verification program, RALPH, after himself.
-  A close reading of the RALPH.fai source code had enabled writing this RALF which re-constructs
-  disk images of a file system suitable for 1974 hardware emulators.
+  who named the Waits PDP-10 file system verification program, RALPH, after himself.
+  A close reading of the RALPH.fai source code has enabled writing this RALF which re-constructs
+  disk images of a file system suitable for the 1974 hardware emulators.
   ¶
   Here we build a PDP-10 SU-AI-Lab system disk image for
   the concatenation of a smallish number of 200 Megabyte IBM-3300 disk packs.
   One, two, or three packs is reasonable;
   up to one hundred disk packs is possible to have twenty Gigabytes online
   which is approximately the total offline capacity of the SAILDART tape archive.
-  suitable for the 1974 hardware re-enactments;
-  but not directly usable on actual museum grade hardware without a further format conversion (IBM CKD / Merlin and Chickadee).
+  The disk-image () suitable for the 1974 hardware re-enactments;
+  but it is not directly usable on actual museum grade hardware without
+  a further format conversion (IBM CKD / Merlin and Chickadee).
   The disk-image file-set is specified by a database CSV formated table (filename,sn,…) rows
   The actual PDP-10 binary data is copied from (SAILDART digital curator accessible)
   unix file system mounted at pathname /data8/sn/
   where each serial numbered blob is available in DATA8 format, binary 8-bytes per PDP-10 word (zero-left-padded)
-  from 000001 to something like 886781 or more recently 888474 with more damaged file blobs available in the archive.
+  from 000001 to something like 886781;
+  or more recently the top serial number is 888474 for authentic blobs
+  as more damaged file blobs have become available from the DART archive.
 
   To verify the highest available blob serial number, sn,
   execute the bash string "(cd /data8/sn;readdir .|sort|tail -1)".
   Blobs beyond sn# 888888 (the Hong-Kong-Lucky serial-number) are not historically authentic,
-  but have been fabricated to augement the simulated environment.
+  but have been fabricated to augment the simulated environment slightly as a stepping stone
+  towards handling large quantities of synthetic files (neo-WAITS) for "Look-and-Feel" reënactment.
   ¶
         track = new TRACK[45600];   // 3 packs × 800. cylinders × 19 tracks per cylinder is 458 Megabytes
         track = new TRACK[131072];  // example 17-bit track-address space 2.3 Gigabytes
@@ -100,7 +104,13 @@ auto MASK=  [0x000000000,
 /* Write the blob content of a SAILDART PDP-10 file into tracks
    ==================================================================================
    Place the content of a SAILDART file into DISK tracks.
-   Read 8-byte-per-word file content from GNU/Linux data8/sn/{SN} files,
+   Read 8-byte-per-word file content
+
+        from when sn ≠ 0
+                data8/sn/{SN} files,
+        or when sn == 0
+                ./KIT/{programmer.project}/.{filename.extension}
+
    Copy track sized segments of sn blob into the track data area
    with attention to a RIB retrieval block for each track,
    with up to 32 tracks per group(cluster).
@@ -109,7 +119,7 @@ auto MASK=  [0x000000000,
    verification was an Operating System level responsibility in 1974.
    There was NO such thing as drive level firmware doing the seek verification.
 */
-ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string pathname){
+ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string pathname,char[]data8_path){
   auto r = ( wrdcnt % 2304 )*8; // Remainder. Number of bytes in last track data.
   auto n = ( wrdcnt / 2304 ) + (( wrdcnt % 2304 ) ? 1 : 0); // tracks needed for this file
   auto a = free_track;
@@ -117,11 +127,12 @@ ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string path
   //
   auto verbose = 1; // (wrdcnt == 445824); // multi-group large-file example is at PAE1E.SND[SND,JAM]
   free_track += n;
-  if(1)writefln("File %s sn=%s   %6d words  %6d tracks needed   a=%d free_track=%d",pathname,sn,wrdcnt,n,a,free_track);
+  if(1)writefln("File %s from %s sn=%s   %6d words  %6d tracks needed   a=%d free_track=%d",
+                pathname,data8_path,sn,wrdcnt,n,a,free_track);
   //
   auto m = 2304*8;      // max blob size in bytes per track data area
   try {
-    blob = read("/data8/sn/"~sn);
+    blob = read( data8_path );
   }
   catch (Throwable){
     stderr.writefln("read file FAILED "~"/data8/sn/"~sn);
@@ -336,35 +347,42 @@ int main()
   // Build the two level SAIL directory structure
   // Place UFD directory-entries into 'D' hash arrays
   // or with indirect place-holding DATA Track pointer values -sn
-  while( infile.readf("%s,%s,%s,%s,%s,%d,%d-%d-%d %d:%d:%d\n", &programmer, &project,
-                      &filename, &extension, &sn, &wrdcnt, &year,&month,&day,&hour,&minute,&second) )
+  while( infile.readf("%s,%s,%s,%s,%s,%d,%d-%d-%d %d:%d:%d\n",
+                      &programmer, &project,
+                      &filename, &extension,
+                      &sn,
+                      &wrdcnt,
+                      &year,&month,&day,
+                      &hour,&minute,&second) )
     {
       file_count++;
       // stderr.writef("%5d ",file_count);
       ufd_filename_swapped = format("%3s%3s",programmer,project);
       auto ppn = sixbit(cast(char[])format("%3s%3s",project,programmer));
       auto pathname = format("%-6s.%3s[%3s,%3s]",filename,extension,project,programmer);
+      auto data8_path= sn ? "/data8/sn/"~sn :
+        "./KIT/UCFS/." ~ programmer ~"."~ project ~"/"~ filename ~ ( extension ? "."~ extension : "" );
       ufd_filecount[ufd_filename_swapped]++;
       //
       // Build four word UFD entry for this filename PPN
       //
       auto slot = new UFDent[1];
       slot[0].filnam = sixbit(filename);
-      slot[0].ext = sixbit(extension)>>18;
+      slot[0].ext    = sixbit(extension)>>18;
       auto saildate = ((year-1964)*12 + month - 1)*31 + day - 1;
       auto sailtime = hour*60 + minute;
-      slot[0].creation_date = saildate; // here CREATION date is same as WRITE date
-      slot[0].date_written = (saildate % 4096); // low order date 12-bits
-      slot[0].date_written_high = (saildate >> 15); // high order  3-bits
+      slot[0].creation_date =      saildate; // here CREATION date is same as WRITE date
+      slot[0].date_written  =     (saildate % 4096); // low order date 12-bits
+      slot[0].date_written_high = (saildate >> 15);  // high order      3-bits
       slot[0].time_written = hour*60 + minute;
       // Pure WRITE all BLOBS into TRACKS !! uncomment the indirection when implemention needed.
       switch(ppn){
       case sixbit_1_2:
       case sixbit_1_3:
-        slot[0].track = fetch_file_content(ppn,sn,wrdcnt,slot,pathname);
+        slot[0].track = fetch_file_content(ppn,sn,wrdcnt,slot,pathname,data8_path);
         break;
       default:
-        slot[0].track = fetch_file_content(ppn,sn,wrdcnt,slot,pathname);
+        slot[0].track = fetch_file_content(ppn,sn,wrdcnt,slot,pathname,data8_path);
         // slot[0].track = -(to!long(sn)); // Indirection to provide access to large file set
         break;
       }

@@ -3,3 +3,8 @@
 *.ckd
 UCFS
 tracks
+track
+stdout
+DASD.octal
+bin
+KIT
