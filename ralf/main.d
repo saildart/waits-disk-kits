@@ -120,15 +120,10 @@ auto MASK=  [0x000000000,
    There was NO such thing as drive level firmware doing the seek verification.
 */
 ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string pathname,char[]data8_path){
-  auto r = ( wrdcnt % 2304 )*8; // Remainder. Number of bytes in last track data.
-  auto n = ( wrdcnt / 2304 ) + (( wrdcnt % 2304 ) ? 1 : 0); // tracks needed for this file
   auto a = free_track;
   void[] blob;
   //
   auto verbose = 1; // (wrdcnt == 445824); // multi-group large-file example is at PAE1E.SND[SND,JAM]
-  free_track += n;
-  if(1)writefln("File %s from %s sn=%s   %6d words  %6d tracks needed   a=%d free_track=%d",
-                pathname,data8_path,sn,wrdcnt,n,a,free_track);
   //
   auto m = 2304*8;      // max blob size in bytes per track data area
   try {
@@ -139,11 +134,17 @@ ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string path
     return 0;
   }
   auto y = blob.length; // blob size from reading the archive file
+  if(sn=="0") wrdcnt = cast(uint)y>>3; // believe the blob, ignore the csv
   auto z = wrdcnt*8;    // blob size in bytes from wrdcnt
   if(y!=z){
     writefln("wrdcnt=%d does NOT match filesize=%d  " ~ "File sn=%s   %6d words   %s", z,y,sn,wrdcnt,pathname );
     return 0; // track#0 NO CONTENT created for this sn#
   }
+  auto r = ( wrdcnt % 2304 )*8; // Remainder. Number of bytes in last track data.
+  auto n = ( wrdcnt / 2304 ) + (( wrdcnt % 2304 ) ? 1 : 0); // tracks needed for this file
+  free_track += n;
+  if(1)writefln("File %s from %s sn=%s   %6d words  %6d tracks needed   a=%d free_track=%d",
+                pathname,data8_path,sn,wrdcnt,n,a,free_track);
   //
   // Place segments of the content blob into N tracks.
   //
@@ -360,8 +361,8 @@ int main()
       ufd_filename_swapped = format("%3s%3s",programmer,project);
       auto ppn = sixbit(cast(char[])format("%3s%3s",project,programmer));
       auto pathname = format("%-6s.%3s[%3s,%3s]",filename,extension,project,programmer);
-      auto data8_path= sn ? "/data8/sn/"~sn :
-        "./KIT/UCFS/." ~ programmer ~"."~ project ~"/"~ filename ~ ( extension ? "."~ extension : "" );
+      auto data8_path= (sn != "0") ? "/data8/sn/"~sn :
+        "./KIT/UCFS/" ~ programmer ~"."~ project ~"/."~ filename ~ ( extension.length ? "."~ extension : "" );
       ufd_filecount[ufd_filename_swapped]++;
       //
       // Build four word UFD entry for this filename PPN

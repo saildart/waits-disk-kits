@@ -1,4 +1,4 @@
-#if 0 // -*- mode:C;coding:utf-8;  -*-
+#if 0 // -*- mode:C;coding:utf-8; -*-
 NAME="rebuild-mfd"
   SRC=""
   DST="/usr/local/bin"
@@ -9,7 +9,7 @@ NAME="rebuild-mfd"
   return 2>/dev/null || exit 0
 #endif
   /*
-    name now: waits-disk-kits/chickadee
+    name now: waits-disk-kits/chickadee/rebuild-mfd.c
     name nee: /data/Toy.Ten/rebuild-sys-mfd.c
     ============================================================================================ 100
     R E B U I L D     M F D
@@ -257,8 +257,8 @@ void pass_one(){
   FILE *mfd_text; // write text version of the MFD into KIT/UCFS/1.1/__1__1.UFD
   DIR *users, *files;
   struct dirent *user, *file;
-  char ppn_path[1024]; // KIT/UCFS/1.1/BGB__1/
-  char filepath[1024]; // KIT/UCFS/BGB__1/FILNAM.EXT
+  char ppn_path[1024]; // $KIT/UCFS/1.1/BGB__1.UFD/
+  char filepath[1024]; // $KIT/UCFS/BGB.1/FILNAM.EXT
   char prog[8], proj[8], filnam[8], ext[8];
   char ppn_ufd[12];  // "BGB__1"
   int i,n;
@@ -437,7 +437,7 @@ main (void)
   if(stat("KIT/UCFS/1.1",&statbuf) && errno==ENOENT) mkdir("KIT/UCFS/1.1",0777);
   
   // Write brand new MFD __1__1.UFD Master File Directory
-  // with an entry for each [ Project , Programmer ] area found under SYS
+  // with an entry for each [ Project , Programmer ] area found in UCFS
   dp11 = opendir("KIT/UCFS/1.1");
   
   pass_one();

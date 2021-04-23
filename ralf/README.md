@@ -19,3 +19,9 @@ contains the content of one (or sometimes many) SAIL file names.
 
 
 
+The make file targets are
+        make
+        make go
+        make tracks
+        make clean
+        make purge

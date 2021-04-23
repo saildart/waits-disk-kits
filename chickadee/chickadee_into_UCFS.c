@@ -1,14 +1,38 @@
-#if 0 // unload_ckd_into_UCFS.c -*- mode:C; coding:utf-8; -*-
-NAME="unload_ckd_into_UCFS"
-SRC="."
-DST="../bin"
+#if 0 // -*- mode:C; coding:utf-8; -*-
+NAME="chickadee_into_UCFS"
+full_path=$(realpath $0)
+echo FROM $full_path
+SRC=$(dirname $full_path)
+DST="/usr/local/bin"
 #           -Wall
 gcc -g -m64       -Werror -o $DST/$NAME  $SRC/$NAME.c && echo -n OK||echo -n FAILED
 echo " $DST/$NAME"
 return 2>/dev/null || exit 0
 #endif
-// gcc -g -o unload_ckd unload_ckd.c
-// `2020-07-25 bgbaumgart@mac.com'
+  /*
+    name now: chickadee_into_UCFS
+    with the associated DASD_into_chickadee
+
+    original name nee: unload_ckd
+
+    Rationale:
+        "load" and "unload" are "container centric", as well as
+        too over used in the PDP10 WAITS context.
+        Names based on the usual verbs for data conversion such as
+        load / unload / dump / save / pack / unpack / translate / convert / encode / decode
+        fail to specify the exact nature of either the SOURCE
+        or the DESTINATION or BOTH.
+
+    Mnemonic silliness, CKD into Chickadee, is justified
+    because it isolates the IBM disk pack format
+    as both a source or destination for the process.
+
+    Along with a renewed desire to avoid adding any modern uses
+    of the tag "SYS" which is already historically over used.
+    Hence the IBM-3330 pizza oven that holds a number of disk packs is called a DASD;
+    and an instance of the SAIL-WAITS file system (the Ralph or Ralf format) is a DISK-KIT
+    with a T-shirt size dash Name.
+  */
 
 #include <assert.h>
 #include <errno.h>
@@ -23,7 +47,7 @@ return 2>/dev/null || exit 0
 
 #define perr(msg) if(1){perror(msg);exit(EXIT_FAILURE);}
 
-// debug message clutter management
+// debug message clutter management markers
 #define bamboo
 #define bamoff 0&&
 #define bamon  1&&
@@ -61,8 +85,11 @@ uint64 record[18*128]; // 2304. PDP10 words per track
   DATA9 has two PDP-10 words packed into 9 bytes
   The Cornwell CKD version of DATA9 packing is called "DeadBeef56DeadBeef"
   because two PDP10 word bit-pattern 0xDeadBeef5 and 0xDeadBeef6
-  are pack into 9 bytes as 0xDeadBeef56DeadBeef.
+  are packed into 9 bytes as 0xDeadBeef56DeadBeef.
 */
+
+uint64 SAT[1267];
+
 #if 0
 typedef union {
   // Little endian x86 struct
@@ -186,12 +213,20 @@ pass1(){
   //
   struct stat statbuf;
   char zip288[288]="";
-    
-  csv = fopen("./KIT/ckd.csv","w");
-  strcpy(name,"./KIT/0.ckd");
 
-  if(stat("./KIT/UCFS",  &statbuf) && errno==ENOENT) mkdir("./KIT/UCFS", 0777);
-  if(stat("./KIT/track", &statbuf) && errno==ENOENT) mkdir("./KIT/track",0777);
+  if( stat( "./0.ckd", &statbuf ) && errno==ENOENT){
+    fprintf(stderr,"\n"
+            "   The first disk-pack file named \"./0.ckd\" was NOT found.\n"
+            "   Your current-working directory must be the WAITS DISK KIT you wish to re-build.\n"
+            "   AND you must run DASD_into_chickadee to make the disk pack files ?\n\n");
+    exit(1);
+  }
+
+  csv = fopen("./ckd.csv","w");
+  strcpy(name,"./0.ckd");
+
+  if(stat("./UCFS",  &statbuf) && errno==ENOENT) mkdir("./UCFS", 0777);
+  if(stat("./track", &statbuf) && errno==ENOENT) mkdir("./track",0777);
   
   for(unit=0;unit<2;unit++){
     disk = fopen(name, "r");
@@ -238,22 +273,45 @@ pass1(){
         // TRACK content
         // unpack content from rib_ and payload_
         repack_data9_into_data8( rib_, (data8_word_t *)&rib, 32 );
-        for(i=0;i<18;i++) repack_data9_into_data8( payload_+8+i*(8+64*9), (data8_word_t *)(&record[i*128]), 128 );
+        for(i=0;i<18;i++){
+          repack_data9_into_data8( payload_+8+i*(8+64*9), (data8_word_t *)(&record[i*128]), 128 );
+        }
         /*
-            The payload_ bytes contain 18. records with
-            8 bytes of IBM disk-head-address prefixed to
-            64*9 bytes of packed PDP10 data.
+          The payload_ bytes contain 18. records with
+          8 bytes of IBM disk-head-address prefixed to
+          64*9 bytes of packed PDP10 data.
 
-            Nine bytes of packed data hold two PDP10 words.
-            The Cornwell packing is done by ~/sky/load_ckd source by the file named load_ckd.c
-            Also see my remarks at ./deadbeef56deadbeef.note
+          Nine bytes of packed data hold two PDP10 words.
+          The Cornwell packing is done by ~/sky/load_ckd source by the file named load_ckd.c
+          Also see my remarks at ./deadbeef56deadbeef.note
 
-            There are 18*128 = 2304. PDP10 words of SAIL-WAITS data per track
-            which is extracted from the payload_ bytes.
+          There are 18*128 = 2304. PDP10 words of SAIL-WAITS data per track
+          which is extracted from the payload_ bytes.
         */
-        
+        /* TRACK ZERO is the SAT TABLE
+           =========================== paste fragment of ralf/track.d code
+           struct SATHEAD // Storage Allocation Table, sacred track zero
+           {
+           ulong dskuse, lstblk, satid, satchk, badcnt, badchk;
+           ulong[32-6] badtrk;
+           }
+           struct SAT // Storage Allocation Table, sacred track zero
+           {
+           ulong[45-32+6] badtrk;
+           ulong idsat, dtime, ddate, p1off, p2off, spare;
+           ulong[1267] satbit; // size of SAT bit table in SYSTEM.DMP[J17,SYS]
+           ulong[2304-1267-57] unused; // 980. words of padding
+           }
+           ===========================
+           so for this program, the SAT bit table is 1267 words long, and is found offset 57. words into track#0
+        */
+        if(track==0){
+          // SAT bits, the sacred Storage-Allocation-Table bit map of tracks in use.
+          for(i=0;i<1267;i++)
+            SAT[i] = record[(57-32)+i];
+        }
         // write track, octal dump format
-        if(0){
+        if(1){
           char track_xnumber[40]; // track/x000999 files octal data13
           FILE *tfile;
           uint64 *ptr;
@@ -289,7 +347,7 @@ pass1(){
         sixbit_halfword_into_ascii_(   prg, rib.prg,    sixbit_ppn   );
         
         // destination directory
-        sprintf(  dir, "./KIT/UCFS/%s.%s", prg, prj );
+        sprintf(  dir, "./UCFS/%s.%s", prg, prj );
         omit_spaces( dir );
         if(stat(dir,&statbuf) && errno==ENOENT) mkdir(dir,0777);
 
@@ -337,8 +395,8 @@ pass1(){
         }
         
         if( track_offset < 0 ){
-          fprintf(stderr,"\nFinal track+1 is x%06d. End of diskpack named %s.\n",track,name);
-          goto FINAL;
+          //          fprintf(stderr,"\nFinal track+1 is x%06d. End of diskpack named %s.\n",track,name);
+          //          goto FINAL;
           fprintf(stderr,"\nBAD RETREIVAL %s\n current track x%06d not found in RIB DDPTR table\n",
                   path,
                   track);
