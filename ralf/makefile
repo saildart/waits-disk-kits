@@ -12,13 +12,14 @@
 
 SRC = main.d track.d word.d
 
-main: ${SRC}
-	@ls -l ./KIT || (echo You need a symlink ./KIT to a ../kit-sub-directory && false)
+/usr/local/bin/ralf: ${SRC}
+	dmd -of/usr/local/bin/ralf -J. main.d
+
+unit: ${SRC}
 	dmd -unittest -J. main.d
 
-go: ${SRC}
-	@ls -l ./KIT || (echo You need a symlink ./KIT to a ../kit-sub-directory && false)
-	dmd -J. -run main.d 1>./KIT/ralf.log
+go:
+	ralf $$KIT
 
 # ----------------------------------------------------------------------------------------------------
 # Input from /KIT/SYS.csv
@@ -44,10 +45,15 @@ purge:
 #	mysql -A saildart < fetch.sql
 # ----------------------------------------------------------------------------------------------------
 tracks:
-	od -An -vto8 -w8 ./KIT/DASD.data8 | cut -c12- > ./KIT/DASD.octal
-	rm -rf     ./KIT/track
-	mkdir -p   ./KIT/track
-	(cd ./KIT/track;split --lines=2336 --numeric-suffixes --suffix-length=6 ../DASD.octal)
+	od -An -vto8 -w8 $$KIT/DASD.data8 | cut -c12- > $$KIT/DASD.octal
+	rm -rf     $$KIT/track
+	mkdir -p   $$KIT/track
+	(cd $$KIT/track;split --lines=2336 --numeric-suffixes --suffix-length=6 ../DASD.octal)
+	cd $$KIT/track
+#       for x in *;do awk '{printf("%s %s",$1,(NR%8==0 ? "\n":""));}' $$x >tmp;mv tmp $$x;done
+#
+# awk '{printf("%s %s",$1,(NR%8==0 ? "\n":""));}' $KIT/track/x00000
+#
 
 # One DASD sample consisted of selected
 # CSV lines from database mysail for the following 25. programmer codes
@@ -63,6 +69,12 @@ fetch:
 	sudo rm -f /var/tmp/ralf.csv\n\
 	time(cat fetch.sql | mysail -N)\n\
 	wc -l /var/tmp/ralf.csv\n\
-	mv /var/tmp/ralf.csv YOUR_NEW_KIT\n"
+	cp /var/tmp/ralf.csv YOUR_KIT\n\
+	cp /var/tmp/ralf.csv $$KIT\n"
+# ------------------------------------- #
+# misc make targets
+tbx:
+	sudo rm -f /var/tmp/ralf.csv
+	mysql --defaults-file=/home/bgb/.my.cnf.saildart < tbx.sql
 # ------------------------------------- #
 # EOF

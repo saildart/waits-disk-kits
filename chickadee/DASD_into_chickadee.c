@@ -5,12 +5,13 @@ NAME="DASD_into_chickadee"
   SRC=$(dirname $full_path)
   DST="/usr/local/bin"
   #           -Wall
-  gcc -g -m64  -Wall     -Werror -o $DST/$NAME  $SRC/$NAME.c && echo OK || echo FAILED
+  gcc -g -m64  -Wall     -Werror -o $DST/$NAME  $SRC/$NAME.c && echo -n OK || echo -n FAILED
   echo $DST/$NAME
   return 2>/dev/null || exit 0
 #endif
   /*
-    program name now: DASD_into_chickadee    with the associated chickadee_UCFS
+    program name now: DASD_into_chickadee   
+        associated with chickadee_into_UCFS
     
     original name nee: load_ckd.c
     From Richard Cornwell via           http://sky-visions.com/dec/waits/
@@ -33,7 +34,7 @@ NAME="DASD_into_chickadee"
 typedef unsigned short int uint16;
 typedef unsigned int uint32;
 
-/* Header block */
+// Header block
 struct pmp_header
 {
   uint8    devid[8];      /* device header. */
@@ -67,25 +68,34 @@ get_word() {
 }    
 
 int
-main(int argc, char *argv[]) {
+main(int ac, char *av[]) {
   unsigned long long int wd;
-  char  name[40];
+  char  name[256];
   char  *cbuf;
   int   tsize;
   struct pmp_header hdr;
   FILE  *disk;
-  int   cyl, hd, rec, pos, i, sector;
-
-  fd = open("./DASD.data8",O_RDONLY);
+  int pack, cyl, hd, rec, pos, i, sector;
+  int packcount=0;
+  char *kitpath;
+  if(ac < 2){
+    fprintf(stderr,"\nsynopsis: %s kitpath\n\n",av[0]);
+    return 1;
+  }
+  kitpath = av[1];
+  sprintf( name, "%s%s", kitpath, "/DASD.data8" );
+  fd = open( name, O_RDONLY );
   if(fd<0){
     fprintf(stderr,
-            "\n\t ERROR: input file ./DASD.data8 NOT found.\n"
+            "\n\t ERROR: input file ./DASD.data8 NOT found.\n\n"
             "\t Your current-working directory must be set to\n"
             "\t the WAITS DISK KIT you wish to re-build\n"
             "\t and it must have a disk-image DASD.data8 file.\n\n"
+            "\t Suggestion: \"cd $KIT\" change environment as needed.\n\n"
             );
     exit(1);
   }
+  if(ac==2) packcount=atoi(av[1]);
   memset(&hdr, 0, sizeof(struct pmp_header));
   memcpy(&hdr.devid[0], "CKD_P370", 8);
   hdr.heads = 19;
@@ -95,8 +105,8 @@ main(int argc, char *argv[]) {
   tsize = hdr.tracksize * hdr.heads;
   if ((cbuf = (char *)calloc(tsize, sizeof(char))) == 0)
     return 1;
-  strcpy(name, "./0.ckd");
-  while (!last) {
+  sprintf( name, "%s%s", kitpath, "/0.ckd");
+  for (pack = 0; (packcount==0 && !last) || ( pack < packcount ) ; pack++) {
     disk = fopen(name, "w");
     fprintf(stderr, "%s: ", name);
     fseek(disk, 0, SEEK_SET);
@@ -120,16 +130,15 @@ main(int argc, char *argv[]) {
         cbuf[pos++] = 0;              /* keylen */
         cbuf[pos++] = 0;              /* dlen */
         cbuf[pos++] = 144;            /*  */
+        // fprintf(stdout, "Disk %s Track x%06d cyl#%3d head#%2d %8d\n", name, track++, cyl, hd, pos);
         for (i = 0; i < 16; i++) {
-          wd = get_word(); 
-          //fprintf (stdout, "c:%3d h:%2d s: %2d w:%5d pos %012llo\n", cyl, hd, rec-1, pos, wd);
+          wd = get_word();
           cbuf[pos++] = (wd >> 28) & 0xff;
           cbuf[pos++] = (wd >> 20) & 0xff;
           cbuf[pos++] = (wd >> 12) & 0xff;
           cbuf[pos++] = (wd >> 4) & 0xff;
           cbuf[pos] = (wd & 0xf) << 4;
-          wd = get_word(); 
-          //fprintf (stdout, "c:%3d h:%2d s: %2d w:%5d pos %012llo\n", cyl, hd, rec-1, pos, wd);
+          wd = get_word();
           cbuf[pos++] |= (wd & 0xf);
           cbuf[pos++] = (wd >> 28) & 0xff;
           cbuf[pos++] = (wd >> 20) & 0xff;
@@ -146,15 +155,13 @@ main(int argc, char *argv[]) {
           cbuf[pos++] = 2;            /* dlen = 576 */
           cbuf[pos++] = 0100;         /*  */
           for (i = 0; i < 64; i++) {
-            wd = get_word(); 
-            //fprintf (stdout, "c:%3d h:%2d s: %2d w:%5d pos %012llo\n", cyl, hd, rec-1, pos, wd);
+            wd = get_word();
             cbuf[pos++] = (wd >> 28) & 0xff;
             cbuf[pos++] = (wd >> 20) & 0xff;
             cbuf[pos++] = (wd >> 12) & 0xff;
             cbuf[pos++] = (wd >> 4) & 0xff;
             cbuf[pos] = (wd & 0xf) << 4;
-            wd = get_word(); 
-            //fprintf (stdout, "c:%3d h:%2d s: %2d w:%5d pos %012llo\n", cyl, hd, rec-1, pos, wd);
+            wd = get_word();
             cbuf[pos++] |= (wd & 0xf);
             cbuf[pos++] = (wd >> 28) & 0xff;
             cbuf[pos++] = (wd >> 20) & 0xff;
