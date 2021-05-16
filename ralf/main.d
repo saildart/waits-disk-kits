@@ -60,6 +60,7 @@ import std.file;
 import std.math;
 import std.algorithm;
 import std.bitmanip;
+import std.datetime;
 import std.string;
 import core.bitop;
 mixin(import("word.d"));
@@ -302,9 +303,25 @@ void setsatbits(ulong t1, ulong t2){
 
 // https://github.com/saildart/waits-disk ralf/main.d
 // Max ------------------------------------------------------------------------------------------- line length
-int main()
+int main(string[]args)
 {
-  stdout.writefln("\n=== BEGIN ===");
+  if(args.length<2){
+    writefln("synopsis: %s Kitpath",args[0]);
+    return 1;
+  }
+  string kitpath = args[1];
+  auto st = Clock.currTime();
+  string now;
+  {
+    auto year = st.year;
+    auto month = st.month;
+    auto day = st.day;
+    auto hour = st.hour;
+    auto minute = st.minute;
+    auto second = st.second;
+    now = format("%4d-%02d-%02d %02d:%02d:%02d",year,month,day,hour,minute,second);
+  }
+  stdout.writefln("\n=== BEGIN ===\n" ~ now);
   //  track = new TRACK[91200]; // Lets say TWICE as many as the 1974 hardware had.
   // track = new TRACK[131072]; // 17-bit 2.3 Gigabytes (huge-old-disk-image fits in current-memory)
   // track = new TRACK[262144]; // 18-bit 4.6 Gigabytes (huge-old-disk-image fits in current-memory)
@@ -338,31 +355,38 @@ int main()
   // the same PRG code over the years, all such people are assigned numeric PRG codes
   // which (except for 1,2,3 and 100) went unused at Stanford.
   //
-  stdout.writeln("\n===  Read ralf.csv ===");
-  auto infile = File("./KIT/ralf.csv","r");
+  stdout.writeln("\n===  Read " ~ kitpath ~ "/ralf.csv ===");
+  auto infile = File( kitpath ~ "/ralf.csv", "r" );
   int file_count;
-  int val;string nam,ln;
-  char[]project,programmer,filename,extension,sn;
+  int val;
+  string nam,ln;
+  char[] project, programmer, filename, extension, wrdcnt_, tbx, sn;
   uint year,month,day,hour,minute,second,wrdcnt;
 
   // Build the two level SAIL directory structure
   // Place UFD directory-entries into 'D' hash arrays
   // or with indirect place-holding DATA Track pointer values -sn
-  while( infile.readf("%s,%s,%s,%s,%s,%d,%d-%d-%d %d:%d:%d\n",
+  while( infile.readf("%s,%s,%s,%s,%s,%s,%s,%d-%d-%d %d:%d:%d\n",
                       &programmer, &project,
                       &filename, &extension,
-                      &sn,
-                      &wrdcnt,
+                      &wrdcnt_,  &tbx,  &sn,
                       &year,&month,&day,
                       &hour,&minute,&second) )
     {
       file_count++;
-      // stderr.writef("%5d ",file_count);
+      programmer = strip( programmer );
+      project    = strip( project );
+      filename   = strip( filename );
+      extension  = strip( extension );
+      sn         = strip(sn);
+      wrdcnt_    = strip(wrdcnt_);
+      wrdcnt     = to!int(wrdcnt_);
+      stderr.writef("%5d files  %5d words", file_count, wrdcnt );
       ufd_filename_swapped = format("%3s%3s",programmer,project);
       auto ppn = sixbit(cast(char[])format("%3s%3s",project,programmer));
       auto pathname = format("%-6s.%3s[%3s,%3s]",filename,extension,project,programmer);
       auto data8_path= (sn != "0") ? "/data8/sn/"~sn :
-        "./KIT/UCFS/" ~ programmer ~"."~ project ~"/."~ filename ~ ( extension.length ? "."~ extension : "" );
+        kitpath ~ "/UCFS/" ~ programmer ~"."~ project ~"/."~ filename ~ ( extension.length ? "."~ extension : "" );
       ufd_filecount[ufd_filename_swapped]++;
       //
       // Build four word UFD entry for this filename PPN
@@ -472,8 +496,8 @@ int main()
   track[1].ufdent[0].ext        = sixbit_ufd;
   track[1].ufdent[0].track      = 1;
   // Write binary disk image using 64-bits for each 36-bit PDP-10 word.
-  stdout.writeln("\n===  Writing ./KIT/DASD.data8 ===");
-  auto outfile = File("./KIT/DASD.data8","wb");
+  stdout.writeln("\n===  Writing "~kitpath~"/DASD.data8 ===");
+  auto outfile = File(kitpath~"/DASD.data8","wb");
   track.length = free_track+1;
   outfile.rawWrite(track);
   outfile.close();
