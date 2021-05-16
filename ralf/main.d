@@ -10,7 +10,7 @@
 // -----------------------------------------------------------------------------------------------------------
 /*
   This program is named "RALF" in honor of Ralph E. Gorin,
-  who named the Waits PDP-10 file system verification program, RALPH, after himself.
+  who modestly named the Waits PDP-10 file system verification program, RALPH, after himself.
   A close reading of the RALPH.fai source code has enabled writing this RALF which re-constructs
   disk images of a file system suitable for the 1974 hardware emulators.
   ¶
@@ -110,7 +110,7 @@ auto MASK=  [0x000000000,
         from when sn ≠ 0
                 data8/sn/{SN} files,
         or when sn == 0
-                ./KIT/{programmer.project}/.{filename.extension}
+                $KIT/{programmer.project}/.{filename.extension}
 
    Copy track sized segments of sn blob into the track data area
    with attention to a RIB retrieval block for each track,
@@ -126,7 +126,7 @@ ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string path
   //
   auto verbose = 1; // (wrdcnt == 445824); // multi-group large-file example is at PAE1E.SND[SND,JAM]
   //
-  auto m = 2304*8;      // max blob size in bytes per track data area
+  auto m = 2304*8; // max blob size in bytes per track data area
   try {
     blob = read( data8_path );
   }
@@ -163,9 +163,9 @@ ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string path
   // Whack the file track numbers into the ribs modulo the 32. track group(cluster) size.
   auto rib = new RIB[1]; // Prime Rib, "one rib to bind them all" and the into groups(clusters) of 32.
   // RIB bind track content to the "named files" (at variance to the unix file system model).
-  rib[0].filnam.fw = slot[0].filnam;    // File Name !
-  rib[0].ext.fw = slot[0].ext<<18;
-  rib[0].ppn.fw = ppn;
+  rib[0].filnam.fw   = slot[0].filnam;    // File Name !
+  rib[0].ext.fw      = slot[0].ext<<18;
+  rib[0].ppn.fw      = ppn;
   rib[0].location.fw = a;               // first track of this file
   rib[0].filesize.fw = wrdcnt;          // length of the file in PDP10 words
   // GROUP groping
@@ -312,6 +312,7 @@ int main(string[]args)
   string kitpath = args[1];
   auto st = Clock.currTime();
   string now;
+  int sail_now_date, sail_now_time;
   {
     auto year = st.year;
     auto month = st.month;
@@ -320,6 +321,8 @@ int main(string[]args)
     auto minute = st.minute;
     auto second = st.second;
     now = format("%4d-%02d-%02d %02d:%02d:%02d",year,month,day,hour,minute,second);
+    sail_now_date = ((year-1964)*12+(month-1))*31+(day-1);
+    sail_now_time = hour*60 + minute;
   }
   stdout.writefln("\n=== BEGIN ===\n" ~ now);
   //  track = new TRACK[91200]; // Lets say TWICE as many as the 1974 hardware had.
@@ -497,7 +500,7 @@ int main(string[]args)
   track[1].ufdent[0].track      = 1;
   // Write binary disk image using 64-bits for each 36-bit PDP-10 word.
   stdout.writeln("\n===  Writing "~kitpath~"/DASD.data8 ===");
-  auto outfile = File(kitpath~"/DASD.data8","wb");
+  auto outfile = File( kitpath ~ "/DASD.data8", "wb" );
   track.length = free_track+1;
   outfile.rawWrite(track);
   outfile.close();

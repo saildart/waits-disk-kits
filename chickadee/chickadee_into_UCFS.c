@@ -296,6 +296,17 @@ read_track(int track){
     }
     // Oversized allocation since file_count < used_track_count.
     UFDslot = (UFD_t *)calloc( sathead.dskuse, sizeof(UFD_t) );
+    // 000021000021 654644_created prot_mode_writ  track#1 // UFD for filename "  1  1.UFD[1,1]"
+    //
+    // 000021000021 654644000000 000000000000 000021000021 // RIB for filename "  1  1.UFD[1,1]"
+    // 000000000001 000000000050 track_first   word_count
+    // 000000007533 000000007533 ref_datetime dmp_datetime
+    // 000000000001 000000000000   group       group_next
+    //
+    // 000000000001 xxxxxxxxxxxx yyyyyyyyyyyy zzzzzzzzzzzz      Track numbers of group 1
+    // wwwwwwwwwwww xxxxxxxxxxxx yyyyyyyyyyyy zzzzzzzzzzzz
+    // wwwwwwwwwwww xxxxxxxxxxxx yyyyyyyyyyyy zzzzzzzzzzzz
+    // wwwwwwwwwwww xxxxxxxxxxxx yyyyyyyyyyyy zzzzzzzzzzzz
   }
   // IBM hardware address
   fprintf( stdout,
@@ -760,17 +771,16 @@ pass0(){
   SAT[0] = 0x800000000L; // allocate track#0 initialization mickey mouse
   csv = fopen("./ckd.csv","w");
   logr= fopen("./ckd.log","w");
-  // open all disk units found in the kit
+  // open all disk units found in this kit
   strcpy(unit_ckd,"./0.ckd");
   for(unit=0;unit<=9;unit++){
     disk[unit] = fopen( unit_ckd, "r" );
     if(!disk[unit]) break;
     unit_ckd[strlen(unit_ckd)-5]++;
   }
-  // read SAT table from track #0
-  read_track(0);
-  riblock_handler(0);
-  payload_handler(0);
+
+  read_track(0);        // read SAT table from track #0
+  
   // read MFD  file "  1  1.UFD[1,1]" starting at track #1
   read_track(1);
   riblock_handler(1);
