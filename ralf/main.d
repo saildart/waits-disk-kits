@@ -53,7 +53,7 @@
   ● expect fewer than 1 million data blobs, unique sn#
   ● expect fewer than 2 million filename_ppn, would needs 500000 PDP10 words (=217 full tracks)
   ● tolerate 32000 ppn codes in order to handle versions for the 20 year SAILDART epoch (=240 months).
-  */
+*/
 import std.stdio;
 import std.conv;
 import std.file;
@@ -82,12 +82,17 @@ immutable ulong sixbit_1_1 = octal!21000021; // sixbit/  1  1/
 immutable ulong sixbit_1_2 = octal!21000022; // sixbit/  1  2/
 immutable ulong sixbit_1_3 = octal!21000023; // sixbit/  1  3/
 //
-// For this Re-Enactment, TODAY's date is 26 July 1974
+// For this reënactment, TODAY's date is 26 July 1974
 // expressed as ((Y-1964)*12+(M-1))*31+(D-1) = octal 07533 = 3931.
-// and the latter-day high-order bits are still sleeping at ZERO.
-int thsdat = octal!7533;
-// Note: The old 12-bit date field overflowed on 4 January 1975,
-// the higher order extra bits were implemented for DART and RALPH, just-in-time for '75.
+// and the latter-day high-order 3 bits are ZERO until 1975-01-05
+int thsdat = octal!7533;    // 1974-06-26
+int SATID  = octal!3164236; // SATID for the 1974 epoch
+  
+  // Note: The old 12-bit date field overflows at end-of-date 4 January 1975.
+  // The higher order extra bits were implemented for DART and RALPH shortly before 1975.
+  
+  // WARNING: Improved reënactment contemplates "fixing" the SAIL-WAITS Y2K defect.
+  
 int ufd_tracks_used=0;
 int data_track=1000; // data content
 int free_track=1000; // start allocating regular files from here
@@ -120,7 +125,9 @@ auto MASK=  [0x000000000,
    verification was an Operating System level responsibility in 1974.
    There was NO such thing as drive level firmware doing the seek verification.
 */
-ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string pathname,char[]data8_path){
+int file_count=0;
+
+ulong fetch_file_content( ulong ppn, char[]sn, uint wrdcnt, UFDent[]slot, string pathname, char[]data8_path ){
   auto a = free_track;
   void[] blob;
   //
@@ -144,8 +151,8 @@ ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string path
   auto r = ( wrdcnt % 2304 )*8; // Remainder. Number of bytes in last track data.
   auto n = ( wrdcnt / 2304 ) + (( wrdcnt % 2304 ) ? 1 : 0); // tracks needed for this file
   free_track += n;
-  if(1)writefln("File %s from %s sn=%s   %6d words  %6d tracks needed   a=%d free_track=%d",
-                pathname,data8_path,sn,wrdcnt,n,a,free_track);
+  if(1)writefln("%5d File %s from %s sn=%s   %6d words  %6d tracks needed   a=%d free_track=%d",
+                file_count, pathname, data8_path, sn, wrdcnt, n, a, free_track );
   //
   // Place segments of the content blob into N tracks.
   //
@@ -203,7 +210,7 @@ ulong fetch_file_content(ulong ppn,char[]sn,uint wrdcnt,UFDent[]slot,string path
 }
 
 // Store UFD into tracks
-// ======================================================================================= //
+// =======================================================================================
 // Place content (the array of file slots) for UFD file 'PrjPrg.UFD[1,1]'
 // into its allocated track(s) starting at t0
 void store_directory_file( UFDent[]dir, ulong t0, ulong sixbit_ppn){
@@ -224,7 +231,7 @@ void store_directory_file( UFDent[]dir, ulong t0, ulong sixbit_ppn){
   q.dmp_datetime.fw  = thsdat;
   q.firstgroup.fw    = 1;
   q.nextgroup.fw     = 0; // All UFD must fit in one group 32.*576. is maximum 18432. files per PPN.
-  q.satid.fw         = 0;
+  q.satid.fw         = SATID;
   //  WORD_PDP10 dqinfo[5]; // special information
   // place link to each track of the group
   // each RIB points at up to 32. other TRACKS of the GROUP.
@@ -360,7 +367,6 @@ int main(string[]args)
   //
   stdout.writeln("\n===  Read " ~ kitpath ~ "/ralf.csv ===");
   auto infile = File( kitpath ~ "/ralf.csv", "r" );
-  int file_count;
   int val;
   string nam,ln;
   char[] project, programmer, filename, extension, wrdcnt_, tbx, sn;
@@ -370,11 +376,9 @@ int main(string[]args)
   // Place UFD directory-entries into 'D' hash arrays
   // or with indirect place-holding DATA Track pointer values -sn
   while( infile.readf("%s,%s,%s,%s,%s,%s,%s,%d-%d-%d %d:%d:%d\n",
-                      &programmer, &project,
-                      &filename, &extension,
+                      &programmer, &project, &filename, &extension,
                       &wrdcnt_,  &tbx,  &sn,
-                      &year,&month,&day,
-                      &hour,&minute,&second) )
+                      &year, &month, &day, &hour, &minute, &second) )
     {
       file_count++;
       programmer = strip( programmer );
@@ -384,7 +388,7 @@ int main(string[]args)
       sn         = strip(sn);
       wrdcnt_    = strip(wrdcnt_);
       wrdcnt     = to!int(wrdcnt_);
-      stderr.writef("%5d files  %5d words", file_count, wrdcnt );
+      // stderr.writefln("%5d files  %5d words", file_count, wrdcnt );
       ufd_filename_swapped = format("%3s%3s",programmer,project);
       auto ppn = sixbit(cast(char[])format("%3s%3s",project,programmer));
       auto pathname = format("%-6s.%3s[%3s,%3s]",filename,extension,project,programmer);
@@ -395,14 +399,16 @@ int main(string[]args)
       // Build four word UFD entry for this filename PPN
       //
       auto slot = new UFDent[1];
-      slot[0].filnam = sixbit(filename);
-      slot[0].ext    = sixbit(extension)>>18;
-      auto saildate = ((year-1964)*12 + month - 1)*31 + day - 1;
-      auto sailtime = hour*60 + minute;
+      slot[0].filnam    = sixbit(filename);
+      slot[0].ext       = sixbit(extension)>>18;
+      auto saildate     = ((year-1964)*12 + month - 1)*31 + day - 1;
+      auto sailtime     = hour*60 + minute;
       slot[0].creation_date =      saildate; // here CREATION date is same as WRITE date
       slot[0].date_written  =     (saildate % 4096); // low order date 12-bits
-      slot[0].date_written_high = (saildate >> 15);  // high order      3-bits
-      slot[0].time_written = hour*60 + minute;
+      slot[0].date_written_high = (saildate >> 12 ); // high order      3-bits
+      slot[0].time_written  =      hour*60 + minute;
+      slot[0].mode = ( tbx=="T" ? 0 :  tbx=="X" ? 8 : 15 ); // use UFD mode to distinguish Text Binary eXecutible.
+      slot[0].prot = 0;
       // Pure WRITE all BLOBS into TRACKS !! uncomment the indirection when implemention needed.
       switch(ppn){
       case sixbit_1_2:
@@ -445,7 +451,7 @@ int main(string[]args)
   track[1].rib.dmp_datetime.fw          = thsdat;
   track[1].rib.firstgroup.fw            = 1;
   track[1].rib.nextgroup.fw             = 0;
-  track[1].rib.satid.fw                 = 0;
+  track[1].rib.satid.fw                 = SATID;
   track[1].rib.dptr[0].l = 1; // this track is the only one in its group
 
   /*
@@ -459,7 +465,7 @@ int main(string[]args)
   auto mfd = new UFDent[ufdcnt];
   ufd_filecontent[mfd_filename] = mfd;
   //
-  stdout.writefln("\n=== linefeed ===");
+  stdout.writefln("\n");
   foreach( i,u; ufd_filnam_swapped[0..ufdcnt]){
     auto tracks_needed = 1 + (ufd_filecount[u]-1) / 576;
     auto sixbit_ppn = swaphalves(sixbit(u));  // XWD project,,programmer sixbit encoded.
@@ -475,7 +481,7 @@ int main(string[]args)
     mfd[i].track = 1 + ufd_tracks_used;
     ufd_tracks_used += tracks_needed;
     // verbose debug progress message
-    if(1)stdout.writefln("file#%d filename='%s.UFD[  1,  1]' " ~
+    if(1)stdout.writefln("#%4d UFD  '%s.UFD[  1,  1]' " ~
                          "holds directory [%3s,%3s] " ~
                          "with %4d files in %4d slots "~
                          "t0=%d "~
@@ -494,6 +500,8 @@ int main(string[]args)
   // if(1){stdout.writefln("\nEXIT early return(0)");return(0);}
   track[0].sat_head.dskuse      = 1 + ufd_tracks_used + (free_track-data_track);
   track[0].sat_head.lstblk      = free_track-1;
+  track[0].sat_head.satid       = SATID;
+  
   // MFD directory entry slot#0 of itself in track#1 as filename '  1  1.UFD'
   track[1].ufdent[0].filnam     = sixbit_1_1;
   track[1].ufdent[0].ext        = sixbit_ufd;
