@@ -1,6 +1,6 @@
-# makefile
+# ralf/makefile
 # -------------------------------------------------------------------------------- #
-# Make a binary SAIL disk image for SYSTEM.DMP[J17,SYS] that is
+# Make a binary SAIL-WAITS disk image for SYSTEM.DMP[J17,SYS] that is
 # compatible with the KA10 operating system of 26 July 1974.
 #
 # This may include documentation, rearch notes, plans,
@@ -21,13 +21,12 @@ unit: ${SRC}
 go:
 	ralf $$KIT
 
-# ----------------------------------------------------------------------------------------------------
-# Input from /KIT/SYS.csv
-#	seven comma delimited fields per line
-#	PRG, PRJ, FILNAM, EXT, sn, wc, ISO_DATETIME
-#	symbolic link /KIT/data8 must to point to a /data8 directory with the 900642 SAILDART sn files.
-# Output goes into /KIT/DASD.data8
-# ----------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
+# Input file name selection comes from {kitpath} / ralf.csv
+#	eight comma delimited fields per line
+#	PRG, PRJ, FILNAM, EXT, wc, tbx, sn, date time
+# Output goes into {kitpath} / DASD.data8
+# --------------------------------------------------------------------------------------------------
 
 print:
 	lpr -P Black1 -o cpi=11 -o lpi=7 -o page-left=36 -o landscape main.d track.d word.d
@@ -37,13 +36,13 @@ purge:
 	rm -f *~ main main.o ./KIT/DASD.data8 ./KIT/DASD.octal ./KIT/ralf.log
 	rm -rf ./KIT/track
 
-# ----------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 # Fetch / select FROM SAILDART database
 #
 # Fetch:
 #	sudo rm -f /var/tmp/SYS.csv
 #	mysql -A saildart < fetch.sql
-# ----------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------------------------
 tracks:
 	od -An -vto8 -w8 $$KIT/DASD.data8 | cut -c12- > $$KIT/DASD.octal
 	rm -rf     $$KIT/track

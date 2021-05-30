@@ -49,13 +49,13 @@ typedef unsigned       int uint32;
    ⇥    Funky use of uppercase names SAT and UFD.
    ⇥    SAIL-WAITS jargon does not distinguish UFD-slots, UFD-files and PPNs.
    ⇥    The SAIL-WAITS file system exploited directory and file equivalence.
-   ⇥    The empty input 0.ckd will generate a 1 file, 1 UFD, 1 ppn UCFS model.
-   .    so called "empty" UCFS/1.1/__1__1.UFD file system with its one directory.
+   ⇥    Empty input $KIT/0.ckd zero-length file generates the
+   .    empty UCFS/1.1/__1__1.UFD file system with its one directory named [1,1]
    Notes:
    ⇥    Every SAIL-WAITS file had a UFD-slot inside a UFD-directory-file.
-   ⇥    UFD-files were named *.UFD[1,1] and contained directories of UFD-slots.
+   ⇥    Authentic UFD-files were named *.UFD[1,1] and contained directories of UFD-slots.
    ⇥    The root directory was named "  1  1.UFD[1,1]" and had one-slot for each PPN.
-   ⇥    PPN is a Project-Programmer-Name for example [1,BGB] as well as [1,1]
+   ⇥    PPN is a Project-Programmer-Name for example [1,BGB]
 */
 RIB_t rib;      // Thirty-two PDP10 words, followed by 2304. PDP10 words. (18*128 is 2304)
 UFD_t ufd[576]; // four PDP10 words per UFD dir entry. 2304./4 = 576. per track.
@@ -67,6 +67,7 @@ int ppncnt=0; // total number of UFD files in the [1,1] root directory
 //
 uint64 record[18*128]; // 2304. PDP10 words per track
 uint64 SAT[1267];      // WAITS sacred Storage-Allocation-Table bit map of used tracks.
+// 1267 words × 36 bits maps 45612 track numbers
 //
 SATHEAD_t sathead;
 SAT_t     satbody;
@@ -78,13 +79,12 @@ FILE *disk[10], *csv, *logr;
   DATA8 has one PDP-10 word placed in 64-bits right adjusted.
   DATA9 has two PDP-10 words packed into 9 bytes.
   --
-  Cornwell places the two PDP10-word bit-patterns(0xDeadBeef5 and 0xDeadBeef6) into 9 bytes as 0xDeadBeef56DeadBeef.
-  Baumgart places the two PDP10-word bit-patterns(0xDeadBeef5 and 0xDeadBeef6) into 9 bytes as 0xDeadBeef5DeadBeef6.
+  Given two-word PDP10 bit-pattern ( 0xDeadBeef5 and 0xDeadBeef6 )
+  Cornwell places it into 9 bytes as 0xDeadBeef56DeadBeef.
+  Baumgart places it into 9 bytes as 0xDeadBeef5DeadBeef6.
   --
-  This program follows the Cornwell convention to decode CKD for the Cornwell PDP10 simulation.
+  This program follows the Cornwell convention to decode CKD from the Cornwell PDP10 simulation.
 */
-
-
 void
 touch_file_modtime( char *path, char *iso_dt ){
   struct tm tm;
@@ -111,7 +111,7 @@ typedef union {
   struct { uint64 nibble_lo:4, byte9:8, byte8:8, byte7:8, byte6:8, :28; } odd;
 } data8_word_t;
 #endif
-
+
 void
 data9_into_data8_cromwell(uint8 *data9, data8_word_t *data8, int wrdcnt ){
   int m;
@@ -334,13 +334,12 @@ char *SAIL_ASCII[]=
    "p",      "q",    "r",    "s",         "t",    "u",    "v",    "w",  // 0160
    "x",      "y",    "z",    "{",         "|",    "",     "}",    ""    // 0170
   };
-
 typedef union {
   uint64 fw;
   struct { uint64 word:36,:28;                          } full;
   struct { uint64 bit35:1,a5:7,a4:7,a3:7,a2:7,a1:7,:28;	} seven; // seven bit ASCII
 } pdp10_word;
-
+
 void
 data8_into_utf8( char *data8path, char *utf8path ){
   // no frills conversion from the Stanford A.I. Lab ASCII into UTF-8 text.
@@ -377,18 +376,21 @@ data8_into_utf8( char *data8path, char *utf8path ){
   fclose(o);
   free( buf8 );
 }
-
+
+// SAIL7 code as one UTF-8 string in 'C' notation, isolate backwacked characters.
+char *SAIL7 =
+    "⚀↓αβ∧¬επλ"
+    "\t\n\v\f\r"
+    "∞∂⊂⊃∩∪∀∃⊗↔_→~≠≤≥≡∨ !"
+    "\""
+    "#$%&'()*+,-./0123456789:;<=>?"
+    "@ABCDEFGHIJKLMNOPQRSTUVWXYZ["
+    "\\"
+    "]↑←`abcdefghijklmnopqrstuvwxyz{|§}"
+    "\b";
 void
 utf8_into_data8( char *utf8path, char *data8path ){  
   // No frills convert UTF-8 text into Stanford A.I. Lab ASCII
-  // SAIL7 code as one UTF-8 string in 'C' notation, isolate backwacked characters.
-  char *SAIL7=
-    "␀↓αβ∧¬επλ"  "\t"   "\n"    "\v"    "\f"   "\r"
-    "∞∂⊂⊃∩∪∀∃⊗↔_→~≠≤≥≡∨ !"        "\""
-    "#$%&'()*+,-./0123456789:;<=>?"
-    "@ABCDEFGHIJKLMNOPQRSTUVWXYZ["        "\\"    "]↑←"
-    "`abcdefghijklmnopqrstuvwxyz{|§}"     "\b" ;
-  
   int i; struct stat sblk; off_t filesize; // in bytes
   int o;
 
@@ -451,7 +453,7 @@ utf8_into_data8( char *utf8path, char *data8path ){
   free( buf7 );
   free( buf8 );
 }
-
+
 void
 data8_into_dasm( char *data8path, char *outpath ){
   // no frills conversion from the Stanford A.I. Lab ASCII into DASM diassembly listing
@@ -592,7 +594,8 @@ pass_ex(){
         assert( cyl == cylinder   );
         assert(  hd == head       );
         assert(  -1 == end_record ); // EOR mark confirmed.
-        fprintf(stdout,"%d.pack %3d.cylinder %2d.head %6d.track\n", unit, cylinder, head, track); // IBM hardware address        
+        fprintf(stdout,"%d.pack %3d.cylinder %2d.head %6d.track\n",
+                unit, cylinder, head, track); // IBM hardware address        
         track = ( unit*800*19 + cylinder*19 + head );
       } // heads
     } // cylinders
@@ -610,12 +613,12 @@ payload_handler(){
   // Directory content from the UFD files named *.UFD[1,1]
   if (  rib.prj==021 &&
         rib.prg==021 &&
-        rib.ext==0654644 ){
-    
+        rib.ext==0654644 ){    
     // each slot of the MFD file "  1  1.UFD[1,1]" represents a PPN sub-directory
-    if ( rib.filnam == 021000021L ) ppncnt = slots;
-    
-    memcpy((void *)&ufd, // Each track 2304 words may have up to 576 UFDs
+    if ( rib.filnam == 021000021L ){
+      ppncnt = slots;
+    }    
+    memcpy((void *)&ufd,        // Each track 2304 words may have up to 576 UFDs
            (void *)&record,
            slots * sizeof(UFD_t));
     // copy new slots into the global slot table
@@ -638,16 +641,18 @@ read_file(int slot){
   UFD_t ufd = UFDslot[ slot ];
   RIB_t prime;
   int track = ufd.track;
-  // int prot  = ufd.prot;
-  char prg[4], prj[4], filnam[8], ext[4], dir[32], file_name[32], path[128];
+  // int prot  = ufd.prot; // SAIL-WAITS protection NOT carried into UCFS model
+  char prg[4], prj[4], filnam[8], ext[4], dir[32], file_name[32];
   char neo_mode_code="T1234567X9abcdeB"[ufd.mode]; // mode 0=T 8=X 15=B codes
+  char data8path[128];
+  char *bx_postfix = ufd.mode==010 ? ".x" : ufd.mode==017 ? ".b" : "";
   //
   int cre_date =  ufd.creation_date;
   int wrt_date = (ufd.date_written_high << 12) | ufd.date_written_low;
   int wrt_time =  ufd.time_written;
   //
-  char created[18]; // "1974-07-26"
-  char written[18]; // "1974-07-26T12:34"
+  char created[18]; // example "1974-07-26"
+  char written[18]; // example "1974-07-26T12:34"
   iso_date( created, cre_date, 0 );        created[10]=0;
   iso_date( written, wrt_date, wrt_time);  written[16]=0;
   //
@@ -673,8 +678,8 @@ read_file(int slot){
   }else{
     sprintf( file_name, "%s%s%s", filnam, (ufd.ext ? ".":""), ext );
   }
-  sprintf( path,   "%s/.%s", dir, file_name );  omit_spaces( path );    // data8
-  
+  sprintf( data8path, "%s/.%s%s", dir, file_name, bx_postfix );
+  omit_spaces( data8path );  
   // copy SAIL-WAITS file content from the CKD disk pack into model UCFS data8 path name
   {
     int o, q, byte_count;
@@ -685,9 +690,9 @@ read_file(int slot){
     int *track_table = calloc(groups*32,sizeof(int));
     // pdp10_word *buf8 = (pdp10_word *)malloc(filesize);
     
-    fprintf( stderr, "read_file %4d.  "
-             "%-26s %6d words %3d group%s %4d track%s  created %s  written %s\n",
-             slot, path, words,
+    fprintf( stderr, "file%6d. "
+             "%-28s %6d words %3d group%s %4d track%s  created %s  written %s\n",
+             slot, data8path, words,
              groups, groups==1 ?" ":"s",
              tracks, tracks==1 ?" ":"s",
              created, written );
@@ -705,9 +710,8 @@ read_file(int slot){
       fprintf(stderr,"tt=%d tracks=%d\n",tt,tracks);
     }
     assert( tt == tracks );
-
     // Write DATA8 version of file content into the kit UCFS tree
-    o = open( path, O_CREAT | O_WRONLY, 0664 ); if(o<0)perr( path );
+    o = open( data8path, O_CREAT | O_WRONLY, 0664 ); if(o<0)perr( data8path );
     for ( tt=0; tt < tracks; tt++ ){
       read_track( track_table[tt] );
       payload_handler();
@@ -716,26 +720,25 @@ read_file(int slot){
       // memcpy( bufptr, record, byte_count ); bufptr += byte_count;
     }
     close( o );
-    touch_file_modtime( path, written );
+    touch_file_modtime( data8path, written );
   }  
 #if 1
   switch( neo_mode_code ){
     char pathtext[128], path_b[128], path_x[128];
   case 'T':
     sprintf( pathtext,"%s/%s", dir, file_name );  omit_spaces( pathtext); // text
-    data8_into_utf8( path, pathtext );
+    data8_into_utf8( data8path, pathtext );
     touch_file_modtime( pathtext, written );
     break;
   case 'X':
     sprintf( path_x,"%s/%s.x", dir, file_name );  omit_spaces( path_x );  // executible
-
-    data8_into_dasm( path, path_x );
+    data8_into_dasm( data8path, path_x );
     touch_file_modtime( path_x, written );
     break;
   case 'B':
   default:
     sprintf( path_b,"%s/%s.b", dir, file_name );  omit_spaces( path_b );  // binary
-    data8_into_octal( path, path_b );
+    data8_into_octal( data8path, path_b );
     touch_file_modtime( path_b, written );
     break;
   }
@@ -747,46 +750,45 @@ read_file(int slot){
 // =================================================================================================
 // TODO
         ● Re-use or delete code and comments from the Junk Yard.
-        ● Improve the SAIL DART multi-kinds of time-date stamps. Time Lord Policy.
+        ● Improve the SAIL DART multi-kinds of time-date stamps.
+        ● Write up a Time Lord dual-time-line policy.
 /*
-  SAIL filenames FILNAM.EXT[PRJ,PRG] are mapped into linux friendly /PRGPRJ/.FILNAM.EXT
+  SAIL filenames FILNAM.EXT[PRJ,PRG] are mapped into Linux friendly /PRG.PRJ/.FILNAM.EXT
   note 1. Prefixed dot on FILNAM indicates data8 binary.
-  note 2. The SAIL [ Project , Programmer ] postfixed is swapped and moved to the left.
-  note 3. For [1,1] and [2,2] file names embedded spaces are converted to underbars.
-*/        
-/*
+  note 2. The SAIL [ Project , Programmer ] postfix is swapped and moved to the left.
+  note 3. For [1,1] and [2,2] file names the embedded spaces are converted to underbars.
+
   RIB datetime stamps -- Creation and Written
   set to DART date for initial Reënactment disk images.
+
   char iso_access_datetime[32]; // zero for initial Reënactment disk images.
   char iso_dump_datetime[32];   // zero for initial Reënactment disk images.
   char file_datetime[32];       // set UCFS files to proper historical date
-  Track payload and destination of this fragment within its file
-*/
-/*
-  TBX neo MODE abuse TBX ( Tea-BoX )
+
+  TBX neo MODE abuse TBX ( Tea-BoX ) extensions
   .t text UTF8; is limited to SAIL ASCII characters,
         omit SOS line numbers,
         omit ETV table-of-content ( unfortunately called "directory" inside the E source )
   .b binary; other than DMP, presentation may include svg, png, csv, jason, ogg and yaml.
   .x executible; DMP format, may have extension .OLD .SAV .TMP .numerals and the like )
-*/
-/*
-  Reënacted ribs from the SAILDART archive have cleared-off
-  the DART backup bookkeepping data
-  that was painfully maintained by the authentic DART program
-  that ran on historical WAITS on a regular schedule.
 
-  The DART backup operation required considerable Stanford personel, human employee manual effort,
+  Reënacted ribs from the SAILDART archive have been substantially cleared-off,
+  .     would be neat to bring back WRTPPN and WRTOOL rib data
+  the DART backup bookkeepping data that was painfully maintained by the authentic DART program.
+  The DART incremental backup was done on the historical WAITS on a regular schedule.
+
+  The DART backup operation required considerable human manual effort,
   to mount and dismount the reels of tape, to label the tapes correctly,
-  and to place or fetch the reels from the racks holding many hundreds of tapes.
+  and to place or fetch the reels from the racks in the rooms housing 
+  the many hundreds of reels of tape.
 
-  SAIL WAITS files have SIX date-time stamps:
+  SAIL WAITS files had SIX date-time stamp fields
   ● UFD created
   ● UFD written
-  ● RIB creation-date,
-  ● RIB reference-date
-  ● RIB written-date
-  ● RUB dump-date
+  ● RIB   creation-date
+  ● RIB  reference-date
+  ● RIB    written-date
+  ● RUB       dump-date
 */
 if(0)
   if( rib.created || rib.refdate || rib.date_lo ){
@@ -813,9 +815,8 @@ The UCFS model
 // Ten disk pack units x 800 cylinders x 19 tracks per cylinder = 152,000 tracks
 // record datetimes from the UFD "dirent" slots in the [1,1]{PRG}{PRJ}.UFD files
 // use track-date of file when arriving at that track and writing that file's content into UCFS
-unsigned short wrt_date_[152000];
-unsigned short wrt_time_[152000];
-unsigned short     mode_[152000]; // T=000 X=010 B=017 Re-purpose the WAITS-mode for Text Executible Binary.
+
+// T=000 X=010 B=017 Re-purpose the WAITS-mode for Text Executible Binary.
 
 /*
   TRACK ZERO is the SAT TABLE
@@ -850,7 +851,7 @@ unsigned short     mode_[152000]; // T=000 X=010 B=017 Re-purpose the WAITS-mode
     then copy the UFD-slots for later file-track-following.
   */
 
-  /* Pontification on Nomensclature:
+  /* Sermon on Nomensclature:
 
     The verbs "load" and "unload" are "container centric",
     as well as over used in the PDP10 WAITS context.
@@ -863,7 +864,7 @@ unsigned short     mode_[152000]; // T=000 X=010 B=017 Re-purpose the WAITS-mode
     because it provides a vivid mnemonic for the IBM disk pack format
     and it removes a TLA, Three-Letter-Acronym, from our playing field.
 
-    I wish to avoid the tag "SYS" as much as possible.
+    I wish to avoid the tag "SYS" when possible.
     So the simulated IBM-3330 pizza oven that holds a number of disk packs will be called DASD;
     and an instance of the SAIL-WAITS file system (the Ralph or Ralf format) is a Disk-Kit;
     with a T-shirt-size dashed-name.
@@ -879,12 +880,12 @@ unsigned short     mode_[152000]; // T=000 X=010 B=017 Re-purpose the WAITS-mode
     which is the dual-content model of a
     SAIL-WAITS Ralfs (a ralph verified File System).
 
-    And UCFS reminds me of UCSF,
-    the University of California San Francisco,
+    UCFS reminds me of UCSF, the University of California San Francisco,
     and all that poison oak on nearby Mount Sutro.
   */
-
 #endif
+          // test whether guest code compiles
+#include "next_sail7bit_code.c"         
 
 // ===================================================================================================
 //                              M       A       I       N

@@ -8,52 +8,6 @@
 // Ruler 1        2         3         4         5         6         7         8         9        10        110
 // 456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.123456789.
 // -----------------------------------------------------------------------------------------------------------
-/*
-  This program is named "RALF" in honor of Ralph E. Gorin,
-  who modestly named the Waits PDP-10 file system verification program, RALPH, after himself.
-  A close reading of the RALPH.fai source code has enabled writing this RALF which re-constructs
-  disk images of a file system suitable for the 1974 hardware emulators.
-  ¶
-  Here we build a PDP-10 SU-AI-Lab system disk image for
-  the concatenation of a smallish number of 200 Megabyte IBM-3300 disk packs.
-  One, two, or three packs is reasonable;
-  up to one hundred disk packs is possible to have twenty Gigabytes online
-  which is approximately the total offline capacity of the SAILDART tape archive.
-  The disk-image () suitable for the 1974 hardware re-enactments;
-  but it is not directly usable on actual museum grade hardware without
-  a further format conversion (IBM CKD / Merlin and Chickadee).
-  The disk-image file-set is specified by a database CSV formated table (filename,sn,…) rows
-  The actual PDP-10 binary data is copied from (SAILDART digital curator accessible)
-  unix file system mounted at pathname /data8/sn/
-  where each serial numbered blob is available in DATA8 format, binary 8-bytes per PDP-10 word (zero-left-padded)
-  from 000001 to something like 886781;
-  or more recently the top serial number is 888474 for authentic blobs
-  as more damaged file blobs have become available from the DART archive.
-
-  To verify the highest available blob serial number, sn,
-  execute the bash string "(cd /data8/sn;readdir .|sort|tail -1)".
-  Blobs beyond sn# 888888 (the Hong-Kong-Lucky serial-number) are not historically authentic,
-  but have been fabricated to augment the simulated environment slightly as a stepping stone
-  towards handling large quantities of synthetic files (neo-WAITS) for "Look-and-Feel" reënactment.
-  ¶
-        track = new TRACK[45600];   // 3 packs × 800. cylinders × 19 tracks per cylinder is 458 Megabytes
-        track = new TRACK[131072];  // example 17-bit track-address space 2.3 Gigabytes
-        track = new TRACK[262144];  // max out 18-bit track-address space 4.6 Gigabytes
-  ¶
-  NOTE: The System J17 Directory Entry LOC Location Track-Address Space is 30-bits internally,
-  since it supports a generous 6-bit low order sector address.
-  If a huge DASD for the Re-Enactment is required,
-  30-bit or even 36-bit Track addresses could be implemented.
-  ¶
-  Also we may implement file content indirection, with negative -sn for file-entry LOC location,
-  so the initial track space needs to only hold the UFD directory data,
-  and blobs are loaded into tracks (or into a track cache) at simulation time.
-  ● expect fewer than 2000 programmer codes
-  ● expect fewer than 8000 ppn codes
-  ● expect fewer than 1 million data blobs, unique sn#
-  ● expect fewer than 2 million filename_ppn, would needs 500000 PDP10 words (=217 full tracks)
-  ● tolerate 32000 ppn codes in order to handle versions for the 20 year SAILDART epoch (=240 months).
-*/
 import std.stdio;
 import std.conv;
 import std.file;
@@ -63,9 +17,9 @@ import std.bitmanip;
 import std.datetime;
 import std.string;
 import core.bitop;
+
 mixin(import("word.d"));
 mixin(import("track.d"));
-
 //
 // GLOBAL state for this module
 //
@@ -81,18 +35,12 @@ immutable ulong sixbit_ufd = octal!654644; // sixbit/UFD/
 immutable ulong sixbit_1_1 = octal!21000021; // sixbit/  1  1/
 immutable ulong sixbit_1_2 = octal!21000022; // sixbit/  1  2/
 immutable ulong sixbit_1_3 = octal!21000023; // sixbit/  1  3/
-//
-// For this reënactment, TODAY's date is 26 July 1974
-// expressed as ((Y-1964)*12+(M-1))*31+(D-1) = octal 07533 = 3931.
-// and the latter-day high-order 3 bits are ZERO until 1975-01-05
+// TODAY's date is 26 July 1974 ((Y-1964)*12+(M-1))*31+(D-1) = octal 07533 = 3931.
 int thsdat = octal!7533;    // 1974-06-26
 int SATID  = octal!3164236; // SATID for the 1974 epoch
-  
-  // Note: The old 12-bit date field overflows at end-of-date 4 January 1975.
-  // The higher order extra bits were implemented for DART and RALPH shortly before 1975.
-  
-  // WARNING: Improved reënactment contemplates "fixing" the SAIL-WAITS Y2K defect.
-  
+// Note: The old 12-bit date field overflows at end-of-date 4 January 1975.
+// The higher order extra bits were implemented for DART and RALPH shortly before 1975.  
+// WARNING: Improved reënactment contemplates "fixing" the SAIL-WAITS Y2K defect.  
 int ufd_tracks_used=0;
 int data_track=1000; // data content
 int free_track=1000; // start allocating regular files from here
@@ -466,7 +414,7 @@ int main(string[]args)
   ufd_filecontent[mfd_filename] = mfd;
   //
   stdout.writefln("\n");
-  foreach( i,u; ufd_filnam_swapped[0..ufdcnt]){
+  foreach( i,u; ufd_filnam_swapped[0..ufdcnt] ){
     auto tracks_needed = 1 + (ufd_filecount[u]-1) / 576;
     auto sixbit_ppn = swaphalves(sixbit(u));  // XWD project,,programmer sixbit encoded.
     mfd[i].filnam = sixbit_ppn; // Filename is PrjPrg in sixbit
@@ -480,6 +428,7 @@ int main(string[]args)
     // Set first track of this UFD into its MFD entry.
     mfd[i].track = 1 + ufd_tracks_used;
     ufd_tracks_used += tracks_needed;
+    mfd[i].mode = octal!17; // binary .b postfix
     // verbose debug progress message
     if(1)stdout.writefln("#%4d UFD  '%s.UFD[  1,  1]' " ~
                          "holds directory [%3s,%3s] " ~

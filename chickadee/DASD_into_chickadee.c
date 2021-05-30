@@ -6,7 +6,7 @@ NAME="DASD_into_chickadee"
   DST="/usr/local/bin"
   #           -Wall
   gcc -g -m64  -Wall     -Werror -o $DST/$NAME  $SRC/$NAME.c && echo -n OK || echo -n FAILED
-  echo $DST/$NAME
+  echo " $DST/$NAME"
   return 2>/dev/null || exit 0
 #endif
   /*

@@ -64,15 +64,16 @@ alter table   mz   add index (unixname);
 
 DROP TABLE if exists target;
 CREATE TABLE target
-     SELECT A.dt,A.prj,A.prg,A.filnam,A.ext,lpad(A.sn,6,'0')sn,A.wrdcnt
+     SELECT A.dt,A.prj,A.prg,A.filnam,A.ext,lpad(A.sn,6,'0')sn,A.wrdcnt,
+          if(A.taxon rlike "TEXT","T",if(A.ext="DMP","X","B")) as tbx
        FROM mz A,targ00 B
        WHERE A.unixname=B.unixname and A.v=B.version;
        
 DROP TABLE if exists targ00;
 # -------------------------------------------------------------------------------
 # Final version of plan '   prg'.PLN[2,2] files into target table. 552 such rows.
-REPLACE target (dt,prj,prg,filnam,ext,sn,wrdcnt)
-SELECT  dt,prj,prg,filnam,ext,lpad(sn,6,'0'),wrdcnt FROM mz
+REPLACE target (dt,prj,prg,filnam,ext,sn,wrdcnt,tbx)
+SELECT  dt,prj,prg,filnam,ext,lpad(sn,6,'0'),wrdcnt,"T" FROM mz
  WHERE dartname rlike '^  2   2    [ A-Z][ A-Z][A-Z] PLN' and v=vn;
 # --------------------------------------------------------------       
 # Favorite versions
@@ -80,8 +81,8 @@ SELECT  dt,prj,prg,filnam,ext,lpad(sn,6,'0'),wrdcnt FROM mz
 # sn=111532  1974-07-17 19:57    3/1/logout.dmp
 # sn=487167  1979-12-08 12:40    sys/spl/fact.txt
 DELETE from target where (filnam='LOGIN' or filnam='LOGOUT') and (ext='DMP' or ext='OLD');
-REPLACE target (dt,prj,prg,filnam,ext,sn,wrdcnt)
-SELECT dt,prj,prg,filnam,ext,lpad(sn,6,'0')sn,wrdcnt FROM mz
+REPLACE target (dt,prj,prg,filnam,ext,sn,wrdcnt,tbx)
+SELECT dt,prj,prg,filnam,ext,lpad(sn,6,'0')sn,wrdcnt,"X" FROM mz
 WHERE sn=112243
    or sn=111532
    or sn=487167;
@@ -93,19 +94,19 @@ delete from target where ext='xgp' or ext='old';
 rename table target to sys0;
 
 # Place the KEEPER file into each [1,prg] UFD for the about 500 users who left a plan file in [2,2]
-insert sys0 (dt,prj,prg,filnam,ext,sn,wrdcnt)
-select mx.dt,"1",mz.filnam,"KEEPER","",566684,10 from mx,mz
+insert sys0 (dt,prj,prg,filnam,ext,sn,wrdcnt,tbx)
+select mx.dt,"1",mz.filnam,"KEEPER","",566684,10,"T" from mx,mz
 where mx.sn=566684 and mz.prg='2' and mz.prj='2' and mz.ext='pln' and length(mz.filnam)<=3 group by mz.filnam;
 # 382 rows affected.
 
 # 49 versions of the FAIL assembler source
-insert sys0 (dt,prj,prg,filnam,ext,sn,wrdcnt)
-select dt,"FAI","SRC",concat("FAIL",lpad(v,2,"0"))filnam,"FAI",sn,wrdcnt
+insert sys0 (dt,prj,prg,filnam,ext,sn,wrdcnt,tbx)
+select dt,"FAI","SRC",concat("FAIL",lpad(v,2,"0"))filnam,"FAI",sn,wrdcnt,"T"
 from mz where filnam='fail' and ext='' and prg='sys';
 
 # 54 versions of the FAIL assembler DMP executible
-insert sys0 (dt,prj,prg,filnam,ext,sn,wrdcnt)
-select dt,"FAI","DMP",concat("FAIL",lpad(v,2,"0"))filnam,"DMP",sn,wrdcnt
+insert sys0 (dt,prj,prg,filnam,ext,sn,wrdcnt,tbx)
+select dt,"FAI","DMP",concat("FAIL",lpad(v,2,"0"))filnam,"DMP",sn,wrdcnt,"X"
 from mz where filnam='fail' and ext='dmp' and prg='3' and prj='1';
 
 # --------------------------------------------------------------       
@@ -114,10 +115,20 @@ from mz where filnam='fail' and ext='dmp' and prg='3' and prj='1';
 #             &project,
 #             &filename,
 #             &extension,
-#             &sn, &wrdcnt,
+#             &wrdcnt,
+#             &tbx
+#             &sn,
 #             &year,&month,&day,&hour,&minute
 #
-select prg,prj,filnam,ext,lpad(sn,6,'0'),wrdcnt,dt from sys0 order by prg,prj,filnam,ext
+select
+lpad(prg,3,' '),
+lpad(prj,3,' '),
+lpad(filnam,6,' '),
+lpad(ext,3,' '),
+lpad(wrdcnt,8,' '),
+tbx,
+lpad(sn,6,'0'),
+dt from sys0 order by prg,prj,filnam,ext
 into OUTFILE '/var/tmp/ralf.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '' LINES TERMINATED BY '\n';
 # ---------------------------------------------------------------------------------------------------
 # EOF.
