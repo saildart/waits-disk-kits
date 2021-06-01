@@ -121,24 +121,24 @@ since every file is marked as already having been used on 26 July 1974.
         dmp_date
 */
 struct RIB{
-  // RIB 32. PDP10 words prefixed to 2304. words of data. So RIB + DATA = TRACK, 32. + 2304. = 2336.
-  //         Renamed              Ralph name
-  //         ----------------     ----------------------------------------------------------------
-  WORD_PDP10 filnam,              // DDNAM sixbit
-             ext,                 // DDEXT sixbit
-             prot,                // DDPRO        whatever
-             ppn,                 // DDPPN sixbit
-             location,            // DDLOC as track# (somewhat like a disk block#)
-             filesize;            // DDLNG in PDP-10 words !
-  WORD_PDP10 ref_datetime,        // DREFTM
-             dmp_datetime,        // DDMPTM
-             firstgroup,          // DGRP1R init value 1 until filesize exceeds
-             nextgroup,           // DNTXGP init value 0
-             satid;               // DSATID init value 0 in core SAT table
-  WORD_PDP10[5] dqinfo;           // DQINFO special information (ie passwords)
-  WORD_PDP10[16] dptr;            // DPTR   32. Track (aka Block) numbers for this group,
-                                  // which are packed left then right, BIG-endian PDP-byte-order.
-} //         ----------------     ----------------------------------------------------------------
+  // RIB 32.PDP10 words prefixed to 2304. words of data. So RIB + DATA = TRACK, 32. + 2304. = 2336.
+  // Renamed             Ralph name
+  // ----------------    ----------------------------------------------------------------
+  WORD_PDP10 filnam,     // DDNAM sixbit
+    ext,                 // DDEXT sixbit
+    prot,                // DDPRO        whatever
+    ppn,                 // DDPPN sixbit
+    location,            // DDLOC as track# (somewhat like a disk block#)
+    filesize,            // DDLNG in PDP-10 words !
+    ref_datetime,        // DREFTM
+    dmp_datetime,        // DDMPTM
+    firstgroup,          // DGRP1R init value 1 until filesize exceeds
+    nextgroup,           // DNTXGP init value 0
+    satid;               // DSATID init value 0 in core SAT table
+  WORD_PDP10[5] dqinfo;  // DQINFO special information (ie passwords)
+  WORD_PDP10[16] dptr;   // DPTR   32. Track (aka Block) numbers for this group,
+                         // which are packed left then right, BIG-endian PDP-byte-order.
+} // ----------------    ----------------------------------------------------------------
 struct TRACK{
   union {
     SATHEAD sat_head; // first 32 words of SAT block

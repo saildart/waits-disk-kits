@@ -707,7 +707,10 @@ read_file(int slot){
     }
     while(!track_table[tt-1]) tt--; // count adjustment
     if(!(tt == tracks)){
+      int i;
       fprintf(stderr,"tt=%d tracks=%d\n",tt,tracks);
+      for ( i=0; i<32; i+=2 )
+        fprintf(stderr,"track_table[%2d] %06o %06o\n", i, track_table[i], track_table[i+1]);
     }
     assert( tt == tracks );
     // Write DATA8 version of file content into the kit UCFS tree

@@ -5,6 +5,7 @@ UCFS
 tracks
 track
 stdout
+stderr
 DASD.octal
 bin
 KIT
