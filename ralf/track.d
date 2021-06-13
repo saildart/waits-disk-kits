@@ -104,7 +104,8 @@ struct UFDent{
                    uint,"mode",4,
                    uint,"prot",9,               // Left side
                    uint,"",28));
-  mixin(bitfields!(long,"track",36,uint,"",28));
+  mixin(bitfields!(long,"track",36,
+                   uint,"",28));
 }
 
 /*

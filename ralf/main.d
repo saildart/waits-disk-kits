@@ -42,8 +42,8 @@ int SATID  = octal!3164236; // SATID for the 1974 epoch
 // The higher order extra bits were implemented for DART and RALPH shortly before 1975.  
 // WARNING: Improved reënactment contemplates "fixing" the SAIL-WAITS Y2K defect.  
 int ufd_tracks_used=0;
-int data_track=1000; // data content
-int free_track=1000; // start allocating regular files from here
+int data_track=2000; // data content
+int free_track=2000; // start allocating regular files from here
 auto MASK=  [0x000000000,
              0x000000001,0x000000003,0x000000007,0x00000000F,
              0x00000001F,0x00000003F,0x00000007F,0x0000000FF,
@@ -297,7 +297,7 @@ int main(string[]args)
   auto mfd_filename = "  1  1";
   auto ufd_filename = "  1  1";
   auto ufd_filename_swapped = ufd_filename; // same "  1  1" in this case.
-  ufd_filnam_swapped = new char[][1024];
+  ufd_filnam_swapped = new char[][2048];
   ufd_filnam_swapped[0] = cast(char[])ufd_filename;
   ufd_filecount[ufd_filename]++;
   int ufdcnt=1; // count +1 the MFD itself is a UFD, so bump the count.

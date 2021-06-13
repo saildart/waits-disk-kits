@@ -1,4 +1,4 @@
-# EXAMPLE fetch.sql
+# EXAMPLE tbx.sql
 # ---------------------------------------------------------------------------------------------------
 #       DASD_KIT / medium-combo
 # ---------------------------------------------------------------------------------------------------
@@ -56,7 +56,7 @@ REPLACE targ00 (unixname,version)
 SELECT unixname,max(v)version FROM mz
         WHERE left(dt,4)>=1970
          and  left(dt,4)<= @yearmax
-         and ( prg rlike "^(ALS|LES|BGB|REG|LSP|DOC)$")
+         and ( prg rlike "^(ALS|LES|BGB|REG|DCS|SRS|LSP|DOC|FW|BH|TVR|JBR|MRC)$")
          group by unixname;
 
 alter table targ00 add index (unixname);
@@ -78,14 +78,24 @@ SELECT  dt,prj,prg,filnam,ext,lpad(sn,6,'0'),wrdcnt,"T" FROM mz
 # --------------------------------------------------------------       
 # Favorite versions
 # sn=112243  1974-07-19 12:37    2/1/login.dmp
+# sn=111534  1974-07-17 04:04    3/1/fail.dmp
+# sn=116706  1974-08-25 00:25    3/1/e.dmp
 # sn=111532  1974-07-17 19:57    3/1/logout.dmp
 # sn=487167  1979-12-08 12:40    sys/spl/fact.txt
 DELETE from target where (filnam='LOGIN' or filnam='LOGOUT') and (ext='DMP' or ext='OLD');
+delete from target where sn=193045; # omit fail.dmp[1,3] 1975
 REPLACE target (dt,prj,prg,filnam,ext,sn,wrdcnt,tbx)
 SELECT dt,prj,prg,filnam,ext,lpad(sn,6,'0')sn,wrdcnt,"X" FROM mz
 WHERE sn=112243
    or sn=111532
-   or sn=487167;
+   or sn=487167
+   or sn=116706
+   or sn=111534
+   ;
+# --------------------------------------------------------------
+# Fix WAITS_617 source the hard way. Borrow COMCSS from K17 into J17. Edit OUTER fake 888888.
+update target set sn=888888,wrdcnt=9446,dt='2021-05-13 17:02',tbx='T' where prg='sys' and prj='j17' and filnam='outer';
+update target set sn=114948,wrdcnt=30080,dt='1974-08-15 18:33',tbx='T' where prg='sys' and prj='j17' and filnam='comcss';
 # --------------------------------------------------------------       
 # remove UGLY filenames and useless content#
 delete from target where sn=232410 or sn=291416 or sn=689280;
@@ -109,6 +119,20 @@ insert sys0 (dt,prj,prg,filnam,ext,sn,wrdcnt,tbx)
 select dt,"FAI","DMP",concat("FAIL",lpad(v,2,"0"))filnam,"DMP",sn,wrdcnt,"X"
 from mz where filnam='fail' and ext='dmp' and prg='3' and prj='1';
 
+# 45 versions of E.DMP
+insert sys0 (dt,prj,prg,filnam,ext,sn,wrdcnt,tbx)
+select dt,"E","DMP",concat("E",lpad(v,2,"0"))filnam,"DMP",sn,wrdcnt,"X" from mz where filnam='e' and ext='dmp' and prg='3' and prj='1' and left(dt,4)<=1975;
+
+# 13 version of TECO.DMP
+set @v=0;
+insert sys0 (dt,prj,prg,filnam,ext,sn,wrdcnt,tbx)
+select dt,"TEC","DMP",concat("TECO",lpad(@v:=@v+1,2,"0"))filnam,"DMP",sn,wrdcnt,"X" from mz where filnam='teco' and ext='dmp' and left(dt,4)<=1979;
+
+# 6 version of TV.DMP
+set @v=0;
+insert sys0 (dt,prj,prg,filnam,ext,sn,wrdcnt,tbx)
+select dt,"TV","DMP",concat("TV",lpad(@v:=@v+1,2,"0"))filnam,"DMP",sn,wrdcnt,"X" from mz where filnam='tv' and ext='dmp' and prj='1' and prg='3' and left(dt,4)<=1975;
+
 # --------------------------------------------------------------       
 #  FILE output field order:
 #             &programmer,
@@ -123,8 +147,8 @@ from mz where filnam='fail' and ext='dmp' and prg='3' and prj='1';
 select
 lpad(prg,3,' '),
 lpad(prj,3,' '),
-lpad(filnam,6,' '),
-lpad(ext,3,' '),
+rpad(filnam,6,' '),
+rpad(ext,3,' '),
 lpad(wrdcnt,8,' '),
 tbx,
 lpad(sn,6,'0'),

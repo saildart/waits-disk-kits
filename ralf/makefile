@@ -75,5 +75,22 @@ fetch:
 tbx:
 	sudo rm -f /var/tmp/ralf.csv
 	mysql --defaults-file=/home/bgb/.my.cnf.saildart < tbx.sql
+	@echo 'REMINDER: cp /var/tmp/ralf.csv /KIT2'
+	@echo '    then: ralf /KIT2'
+	@echo '    then: DASD_into_chickadee /KIT2'
+tbx79:
+	sudo rm -f /var/tmp/ralf.csv
+	mysql --defaults-file=/home/bgb/.my.cnf.saildart < tbx79.sql
+	@echo 'REMINDER: cp /var/tmp/ralf.csv /KIT1'
+	@echo '    then: ralf /KIT1'
+	@echo '    then: DASD_into_chickadee /KIT1'
+tbx1:
+	cp /var/tmp/ralf.csv /KIT1
+	ralf /KIT1
+	DASD_into_chickadee /KIT1
+tbx2:
+	cp /var/tmp/ralf.csv /KIT2
+	ralf /KIT2
+	DASD_into_chickadee /KIT2
 # ------------------------------------- #
 # EOF
