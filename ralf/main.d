@@ -35,6 +35,7 @@ immutable ulong sixbit_ufd = octal!654644; // sixbit/UFD/
 immutable ulong sixbit_1_1 = octal!21000021; // sixbit/  1  1/
 immutable ulong sixbit_1_2 = octal!21000022; // sixbit/  1  2/
 immutable ulong sixbit_1_3 = octal!21000023; // sixbit/  1  3/
+immutable ulong sixbit_2_2 = octal!22000022; // sixbit/  2  2/
 // TODAY's date is 26 July 1974 ((Y-1964)*12+(M-1))*31+(D-1) = octal 07533 = 3931.
 int thsdat = octal!7533;    // 1974-06-26
 int SATID  = octal!3164236; // SATID for the 1974 epoch
@@ -100,7 +101,10 @@ ulong fetch_file_content( ulong ppn, char[]sn, uint wrdcnt, UFDent[]slot, string
   auto n = ( wrdcnt / 2304 ) + (( wrdcnt % 2304 ) ? 1 : 0); // tracks needed for this file
   free_track += n;
   if(1)writefln("%5d File %s from %s sn=%s   %6d words  %6d tracks needed   a=%d free_track=%d",
-                file_count, pathname, data8_path, sn, wrdcnt, n, a, free_track );
+                file_count,
+                pathname,
+                data8_path,
+                sn, wrdcnt, n, a, free_track );
   //
   // Place segments of the content blob into N tracks.
   //
@@ -179,7 +183,7 @@ void store_directory_file( UFDent[]dir, ulong t0, ulong sixbit_ppn){
   q.dmp_datetime.fw  = thsdat;
   q.firstgroup.fw    = 1;
   q.nextgroup.fw     = 0; // All UFD must fit in one group 32.*576. is maximum 18432. files per PPN.
-  q.satid.fw         = SATID;
+  q.satid.fw         = 0; // SATID;
   //  WORD_PDP10 dqinfo[5]; // special information
   // place link to each track of the group
   // each RIB points at up to 32. other TRACKS of the GROUP.
@@ -228,22 +232,24 @@ ulong sixbit(char[]str){
   }
   return w.fw;
 }
-// Set the storage allocation bits to be marked as in use, USED bits, into SAT table.
-// for a span of tracks from t1 to (t2-1) inclusive, that is t2 is +1 beyond the span, 
-// consistent with the 'D' language slice notation.
+/*
+ * Set the storage allocation bits to be marked as in use, USED bits, into SAT table.
+ * for a span of tracks from t1 to (t2-1) inclusive, that is t2 is +1 beyond the span, 
+ * consistent with the 'D' language (and Python) slice notation.
+ */
 void setsatbits(ulong t1, ulong t2){
   ulong q1,r1,q2,r2;
-  stdout.writefln("setsatbits(%d,%d)",t1,t2);
   if( t1==t2 || 45599<t1 ){
     return; // do nothing case
   }
-  if(t2>45599){ // Over-The-TOP is OK for Read-Only (Farb-ricated) tracks.
+  if(t2>45599){ // Over-The-TOP is OK for Read-Only tracks.
     t2 = 45599; // SYSTEM.DMP[J17,SYS] SAT table last bit is forever LSTBTB/ 45,599.
   }
+  stdout.writefln("setsatbits(%d,%d) for %d tracks",t1,t2,t2-t1);
   assert( t2 > t1, "sheesh BAD setsatbits interval");
   q1 = t1/36; r1 = t1%36;
   q2 = t2/36; r2 = t2%36;
-  writeln("setsatbits t1=",t1," q1=",q1," r1=",r1,"    t2=",t2," q2=",q2," r2=",r2);
+  //writeln("setsatbits t1=",t1," q1=",q1," r1=",r1,"    t2=",t2," q2=",q2," r2=",r2);
   if(q1==q2){                                           // set the bits in the middle of a word.
     track[0].sat_data.satbit[q1] |= ( MASK[36-r1] & (MASK[r2]<<(36-r2)) );
   }else{
@@ -276,7 +282,7 @@ int main(string[]args)
     auto minute = st.minute;
     auto second = st.second;
     now = format("%4d-%02d-%02d %02d:%02d:%02d",year,month,day,hour,minute,second);
-    sail_now_date = ((year-1964)*12+(month-1))*31+(day-1);
+    sail_now_date = (year - 1964)*372 + (month-1)*31 + (day-1); // 372 = 31 × 12
     sail_now_time = hour*60 + minute;
   }
   stdout.writefln("\n=== BEGIN ===\n" ~ now);
@@ -295,10 +301,11 @@ int main(string[]args)
   //    Its directory entry (for itself as a file) is in slot#0 of track#1.
   //
   auto mfd_filename = "  1  1";
+  auto mfd_filename_long = "1  1    1  1";
   auto ufd_filename = "  1  1";
-  auto ufd_filename_swapped = ufd_filename; // same "  1  1" in this case.
+  auto ufd_filename_swapped = "1  1    1  1"; // template see below
   ufd_filnam_swapped = new char[][2048];
-  ufd_filnam_swapped[0] = cast(char[])ufd_filename;
+  ufd_filnam_swapped[0] = cast(char[])ufd_filename_swapped;
   ufd_filecount[ufd_filename]++;
   int ufdcnt=1; // count +1 the MFD itself is a UFD, so bump the count.
   // ==============================================
@@ -318,28 +325,31 @@ int main(string[]args)
   int val;
   string nam,ln;
   char[] project, programmer, filename, extension, wrdcnt_, tbx, sn;
+  char[] project_, programmer_, filename_, extension_;
   uint year,month,day,hour,minute,second,wrdcnt;
 
   // Build the two level SAIL directory structure
   // Place UFD directory-entries into 'D' hash arrays
   // or with indirect place-holding DATA Track pointer values -sn
   while( infile.readf("%s,%s,%s,%s,%s,%s,%s,%d-%d-%d %d:%d:%d\n",
-                      &programmer, &project, &filename, &extension,
+                      &programmer_, &project_, &filename_, &extension_,
                       &wrdcnt_,  &tbx,  &sn,
                       &year, &month, &day, &hour, &minute, &second) )
     {
       file_count++;
-      programmer = strip( programmer );
-      project    = strip( project );
-      filename   = strip( filename );
-      extension  = strip( extension );
+      programmer = strip( programmer_ );
+      project    = strip( project_ );
+      filename   = strip( filename_ );
+      extension  = strip( extension_ );
       sn         = strip(sn);
       wrdcnt_    = strip(wrdcnt_);
       wrdcnt     = to!int(wrdcnt_);
       // stderr.writefln("%5d files  %5d words", file_count, wrdcnt );
-      ufd_filename_swapped = format("%3s%3s",programmer,project);
+      // For the ufd KEY first omit leading PRG and PRJ spaces, followed by the space padded PPPN
+      ufd_filename_swapped = format("%-3.3s%-3.3s%3.3s%3.3s", programmer, project, programmer_, project_ );
       auto ppn = sixbit(cast(char[])format("%3s%3s",project,programmer));
       auto pathname = format("%-6s.%3s[%3s,%3s]",filename,extension,project,programmer);
+      auto pathname_= format("%6s.%3s[%3s,%3s]",filename_,extension,project,programmer);
       auto data8_path= (sn != "0") ? "/data8/sn/"~sn :
         kitpath ~ "/UCFS/" ~ programmer ~"."~ project ~"/."~ filename ~ ( extension.length ? "."~ extension : "" );
       ufd_filecount[ufd_filename_swapped]++;
@@ -347,10 +357,13 @@ int main(string[]args)
       // Build four word UFD entry for this filename PPN
       //
       auto slot = new UFDent[1];
-      slot[0].filnam    = sixbit(filename);
-      slot[0].ext       = sixbit(extension)>>18;
-      auto saildate     = ((year-1964)*12 + month - 1)*31 + day - 1;
-      auto sailtime     = hour*60 + minute;
+      slot[0].filnam  = sixbit(filename);
+      if( ppn == sixbit_2_2 )
+        slot[0].filnam  = sixbit(filename_);
+      slot[0].ext     = sixbit(extension)>>18;
+      //   saildate   = ((year-1964)*12 + month - 1)*31 + day - 1;
+      auto saildate   = (year - 1964)*372 + (month-1)*31 + (day-1); // 372 = 31 × 12
+      auto sailtime   = hour*60 + minute;
       slot[0].creation_date =      saildate; // here CREATION date is same as WRITE date
       slot[0].date_written  =     (saildate % 4096); // low order date 12-bits
       slot[0].date_written_high = (saildate >> 12 ); // high order      3-bits
@@ -362,6 +375,10 @@ int main(string[]args)
       case sixbit_1_2:
       case sixbit_1_3:
         slot[0].track = fetch_file_content(ppn,sn,wrdcnt,slot,pathname,data8_path);
+        break;
+      case sixbit_2_2: // Space PRESERVATION for the [2,2]
+        slot[0].track = fetch_file_content(ppn,sn,wrdcnt,slot,pathname_,data8_path);
+        slot[0].filnam = sixbit(filename_);
         break;
       default:
         slot[0].track = fetch_file_content(ppn,sn,wrdcnt,slot,pathname,data8_path);
@@ -409,16 +426,20 @@ int main(string[]args)
     Write final version of MFD into its tracks starting at track#1.
   */
   sort( ufd_filnam_swapped[0..ufdcnt] );
-  ufd_filecount[mfd_filename] = ufdcnt;
+  ufd_filecount[mfd_filename_long] = ufdcnt;
   auto mfd = new UFDent[ufdcnt];
-  ufd_filecontent[mfd_filename] = mfd;
+  ufd_filecontent[mfd_filename_long] = mfd;
   //
   stdout.writefln("\n");
-  foreach( i,u; ufd_filnam_swapped[0..ufdcnt] ){
-    auto tracks_needed = 1 + (ufd_filecount[u]-1) / 576;
+  foreach( i,uu; ufd_filnam_swapped[0..ufdcnt] ){
+    stdout.writefln("i=%d uu='%s'\n",i,uu);
+    auto u = uu[6..$];
+    stdout.writefln("i=%d uu='%s' u='%s'\n",i,uu,u);
+    auto tracks_needed = 1 + (ufd_filecount[uu]-1) / 576;
     auto sixbit_ppn = swaphalves(sixbit(u));  // XWD project,,programmer sixbit encoded.
     mfd[i].filnam = sixbit_ppn; // Filename is PrjPrg in sixbit
-    mfd[i].ext    = sixbit_ufd; // Extension .UFD into 18-bit field
+    mfd[i].ext    = sixbit_ufd; // Extension .UFD into 18-bit field    
+    mfd[i].prot = 0;
     //    track[1].ufdent[i].creation_date
     //    track[1].ufdent[i].prot
     //    track[1].ufdent[i].mode
@@ -429,17 +450,26 @@ int main(string[]args)
     mfd[i].track = 1 + ufd_tracks_used;
     ufd_tracks_used += tracks_needed;
     mfd[i].mode = octal!17; // binary .b postfix
+    mfd[i].creation_date =      sail_now_date;
+    mfd[i].date_written  =     (sail_now_date % 4096); // low order date 12-bits
+    mfd[i].date_written_high = (sail_now_date >> 12 ); // high order      3-bits
+    mfd[i].time_written  =      sail_now_time;
+
     // verbose debug progress message
     if(1)stdout.writefln("#%4d UFD  '%s.UFD[  1,  1]' " ~
                          "holds directory [%3s,%3s] " ~
                          "with %4d files in %4d slots "~
                          "t0=%d "~
                          "needs %d track%s UFD_tracks_used=%d",
-                         i,u[3..6]~u[0..3],u[3..6],u[0..3],ufd_filecount[u],ufd_filecontent[u].length,
+                         i,
+                         u[3..6]~u[0..3],
+                         u[3..6],u[0..3],
+                         ufd_filecount[uu],
+                         ufd_filecontent[uu].length,
                          mfd[i].track,
                          tracks_needed, tracks_needed==1 ?"   ":"s  ",
                          ufd_tracks_used );
-    store_directory_file( ufd_filecontent[u], mfd[i].track, sixbit_ppn );
+    store_directory_file( ufd_filecontent[uu], mfd[i].track, sixbit_ppn );
   }
   store_directory_file( mfd, 1, sixbit_1_1 );
   stdout.writefln("There are %6d UFD files and %6d ordinary files",ufdcnt,file_count);
@@ -447,7 +477,7 @@ int main(string[]args)
   setsatbits(0,ufd_tracks_used+1);
   setsatbits(data_track,free_track);
   // if(1){stdout.writefln("\nEXIT early return(0)");return(0);}
-  track[0].sat_head.dskuse      = 1 + ufd_tracks_used + (free_track-data_track);
+  track[0].sat_head.dskuse      = 1 + ufd_tracks_used + (free_track - data_track);
   track[0].sat_head.lstblk      = free_track-1;
   track[0].sat_head.satid       = SATID;
   

@@ -54,22 +54,26 @@ def bpu():
     pudb.set_trace()
     
 def vprint(*args,**kwargs):
-    # print(*args,**kwargs)
+    print(*args,**kwargs)
+    pass
+
+def qprint(*args,**kwargs):
     pass
 
 def maud():
-    """ step: ● kitpath from argument.  """
+    vprint("PAGE 1    ● kitpath from argument.        ● Create empty MFD.")
+
     if(len(sys.argv)!=2):
         print("synopsis: maud Kitpath")
         os._exit(1)
-    kit.path = sys.argv[1]
+    kit.path = os.path.realpath( sys.argv[1] )
     kit.rootpath = kit.path + "/UCFS"
     kit.mfd_path = kit.path + "/UCFS/1.1"
     kit.ufd_list = []
     kit.ufd_dict = {}           # directory dictionary keyed on {programmer} dot {project} strings
     kit.data8_dict = {}         # ALL files keyed on dot slash path name
     kit.matepair_list = []
-    kit.fat = {} # file at track# dictionary
+    kit.fat = [] # file at track# list
     
     """ UCFS model pattern definitions """
     pat = Struct()
@@ -77,19 +81,22 @@ def maud():
     pat.ppn    = re.compile(r"     (?P<prg>\w{1,3})       \.(?P<prj>\w{1,3})"                        ,re.X)
     pat.filnam = re.compile(r"     (?P<filnam>[\w]{1,6}) (\.(?P<ext>\w{0,3}))? (\.(?P<tbx>[tbx]))? $",re.X)
     pat.dotnam = re.compile(r"\.   (?P<filnam>[\w]{1,6}) (\.(?P<ext>\w{0,3}))? (\.(?P<tbx>[tbx]))? $",re.X)
-    pat.txtnam = re.compile(r"     (?P<filnam>[\w]{1,6}) (\.(?P<ext>\w{0,3}))?                     $",re.X)
+    pat.txtnam = re.compile(r"     (?P<filnam>[\w]{1,6}) (\.(?P<ext>[A-Z0-9]{0,3}))?               $",re.X)
     
     """ step: ● Remove old MFD tree. """
-    """ step: ● Create empty MFD. """
+    """ step: ● Create new empty MFD. """
     try:
         shutil.rmtree( kit.mfd_path )
     except OSError as e:
         pass
     pathlib.Path( kit.mfd_path ).mkdir( parents=True, exist_ok=True )
 
-    """ PAGE 2
-    step: ● Find synthetic TEXT newer than DATA8.
+    vprint(
+    """PAGE 2
+    step: ● Find TEXT files that are newer than DATA8.
     step: ● Replace stale DATA8.
+    """)
+    """
     todo: □ Consider whether to remove directories and files that fail UCFS-model pattern matching.
     todo: □ Find DATA8 which lack TEXT.
     todo: □ Generat TEXT mate for each DATA8 widow.
@@ -98,7 +105,7 @@ def maud():
     for dot_ufd, dirs, files in os.walk("."):
         dirs.sort()
         files.sort()
-        vprint("\nWalking top {}\n        subdir {}\n        files {}".format( dot_ufd, dirs, files))
+        qprint("\nWalking top {}\n        subdir {}\n        files {}".format( dot_ufd, dirs, files))
         pp = dot_ufd[2:] # programmer dot project key
         match = pat.dotppn.match( dot_ufd )
         if not match : continue
@@ -117,7 +124,7 @@ def maud():
         ppn6b= "".join(["%02o"%(ord(x)-32) for x in ppn])
         #
         ufd.path = "./1.1/.{}.UFD".format( ppn_ )
-        vprint("NEW directory file {}".format( ufd.path ))
+        qprint("NEW directory file {}".format( ufd.path ))
         kit.data8_dict[ ufd.path ] = ufd
         ufd.pp = pp
         ufd.prg_dot_prj = pp
@@ -134,17 +141,16 @@ def maud():
             txt.isodate = datetime.datetime.fromtimestamp(txt.date).strftime('%Y-%m-%d %H:%M:%S')
             #
             data8 = Struct()
-            data8.path = dot_ufd+"/."+f
+            data8.path = dot_ufd+"/."+(f[:-2] if f.endswith(".x") or f.endswith(".b") else f)
             kit.data8_dict[ data8.path ] = data8
             data8.exists = os.path.exists( data8.path )
             match = pat.filnam.match( f ); assert( match ) # 2nd time for sure is good.
-            vprint("NEW  regular  file  named {}".format(data8.path))
+            qprint("NEW  regular  file  named {}".format(data8.path))
             #
             if data8.exists:
                 data8.date = os.path.getmtime( data8.path )
             if (not data8.exists or data8.date < txt.date) and pat.txtnam.match( f ) :
                 # refresh content of data8 file when stale
-                vprint("{:24} {}  {}".format( txt.path, txt.isodate, data8.isodate))
                 cv.utf8_into_data8( txt.path, data8.path )
                 data8.exists = os.path.exists( data8.path );assert(data8.exists)
             if data8.exists:                
@@ -159,19 +165,16 @@ def maud():
             txt.data8 = data8
             kit.matepair_list.append( [data8,txt] )
         # end-of-loop for f
-        vprint("dot_ufd  {:10} has {:4} files requiring {:4} tracks".
+        qprint("dot_ufd  {:10} has {:4} files requiring {:4} tracks".
               format( dot_ufd, len(ufd.files), ufd.file_tracks ))
     # end-of-loop for dot_ufd
 
-    """ PAGE 3
-    ● Track allocation
-    """
+    vprint("""PAGE 3    ● Track allocation """)
     ufdcnt = len( kit.ufd_list )
     dircnt = len( kit.ufd_dict )
     filcnt = len( kit.matepair_list )
     totcnt = dircnt + filcnt
-    vprint("{} ufd as ( {} SAIL_directories with + {} SAIL_files ) is {} total SAIL_objects\n".
-          format( ufdcnt, dircnt, filcnt, totcnt ))
+    
     mfd.file_count = dircnt
     mfd.track  = 0
     mfd.tracks = (mfd.file_count + 575) // 576
@@ -181,39 +184,62 @@ def maud():
     for u in kit.ufd_list:
         u.track  = next_track
         u.tracks = (u.file_count + 575) // 576  # Directory size is file_count × 4-words per slot
+        u.groups = (u.tracks+31)//32
         u.words  = 4*u.file_count
         next_track += u.tracks
-        kit.fat[u.path] = [u.track,u.tracks]
+        kit.fat.append( u )
         
     # Allocate tracks for SAIL regular files
     for [d,t] in kit.matepair_list:
         d.track  = next_track
         d.tracks = (d.words + 2304) // 2304 # File size in PDP-10 words
+        d.groups = (d.tracks+31)//32
         next_track += d.tracks
-        kit.fat[d.path] = [d.track,d.tracks]
-        
+        kit.fat.append( d )
+
     # Eyeball the allocation
+    vprint(
+        "    Allocated {} UFDs representing {} SAIL_directories with {} SAIL_files,\n".format( ufdcnt, dircnt, filcnt ) +
+        "    for a total  of {} SAIL_objects using {} tracks including the track#0 SAT table.\n".format( totcnt, next_track ) +
+        "    len(kit.fat) is {} objects".format( len(kit.fat) )
+        )
+    i=0
     if(1):
         for u in kit.ufd_list:
-            vprint("directory {:7} {:3} file{}        length {:4} track{} starting at track #{:06} at SAIL_file {:24}".
-                  format( u.pp,
+            i+=1
+            vprint("{:6}.directory {:7} {:3} file{}        length {:4} track{} starting at track #{:06} is in SAIL_file {:24}".
+                  format( i,
+                          u.pp,
                           u.file_count,"s "[u.file_count==1],
                           u.tracks,    "s "[u.tracks==1],
                           u.track, u.path ))
     if(1):
+        vprint("")
         for [d,t] in kit.matepair_list:
-            d.groups = (d.tracks+31)//32
+            i+=1
             gstring = ["","{} groups".format(d.groups)][ d.groups > 1 ]
-            vprint("SAIL_file {:24} length {:4} track{} starting at track #{:06} {}".
-                  format( d.path,
+            vprint("{:6}.SAIL_file {:24} length {:4} track{} starting at track #{:06} {}".
+                  format( i,
+                          d.path,
                           d.tracks, "s "[d.tracks==1],
                           d.track, gstring ))
     # bp()
+    print(len(kit.fat))
+    if(1):
+        i=0
+        for o in kit.fat:
+            i+=1
+            gstring = ["","{} groups".format(o.groups)][ o.groups > 1 ]
+            vprint("{:6}. path   {:24}  in {:4} track{} starting at track #{:06} {}".
+                   format(i,
+                          o.path[2:],
+                          o.tracks, "s "[o.tracks==1],
+                          o.track, gstring ))
     # stop()
     
-    """ PAGE 4    ● Write new UFD files    """
+    vprint("""\n PAGE 4    ● Write new UFD files    """)
     vprint("""\nstep: ● Write new ./1.1/{programmer}{project}.UFD files  """)
-    os.chdir( kit.rootpath ) # redundant reminder
+    os.chdir( kit.rootpath ) # redundant reminder, doesn't work for dot relative
     mfd.path = "./1.1/.__1__1.UFD"
     mfd.file = open( mfd.path, 'wb' )
     dirlist = os.listdir( "." )
@@ -308,7 +334,8 @@ def maud():
         ufd.ppn6b = "000021000021"
     mfd.file.close()
 
-    """ PAGE 5 ● SAT bitmap into Track Zero
+    vprint("""\n PAGE 5  ● Write SAT bitmap into DASD Track Zero """)
+    """
 ================================================================================
 ;WAITS 6.17J source code from ALLDAT[SYS,J17] starting at line 168:
 ;SAT TABLE AS STORED ON BLOCK 0 OF THE DISK
@@ -334,7 +361,6 @@ def maud():
 ↑SATEND:	0		;END OF MAIN BIT TABLE (UDP SATS ARE DIFFERENT SIZE)
 ↑SATSIZ←←SATEND-SATTAB
     """
-    vprint("""\nstep: ● Write kit/DASD.data8  """)
     dasd = open( kit.path+"/DASD.data8", "wb" )
     
     # The PDP10 bit positions within a word are numbered from left to right
@@ -364,26 +390,17 @@ def maud():
         [ 0 for i in range(1267-setsat_words-1) ]
     t0.unused = [0 for i in range(980 + 32)]
     # WAITS 6.17 concatenates the RIB and PAYLOAD for Track Zero;
-    # and then it only reads/writes 1324 of the 2336 words.
+    # and it only reads/writes the first 1324 words of the 2336 word track.
     track_zero = struct.pack("2336Q",
-                             t0.dskuse,
-                             t0.lstblk,
-                             t0.satid,
-                             t0.satchk,
-                             t0.badcnt,
-                             t0.badchk,
+                             t0.dskuse, t0.lstblk, t0.satid, t0.satchk, t0.badcnt, t0.badchk,
                              *t0.badtrk,
-                             t0.idsat,
-                             t0.dtime,
-                             t0.ddate,
-                             t0.p1off,
-                             t0.p2off,
-                             t0.spare,
+                             t0.idsat, t0.dtime, t0.ddate, t0.p1off, t0.p2off, t0.spare,
                              *t0.satbit,
                              *t0.unused )
     dasd.write( track_zero )
 
-    """ PAGE 6
+    vprint(""" PAGE 6  ● Write new DASD Tracks 1 to {} inclusive.""".format(t0.lstblk))
+    """
     struct RIB{
       //         Renamed              Ralph.FAI name
       //         ----------------     ----------------------------------------------------------------
@@ -410,67 +427,56 @@ def maud():
     rib.satid = (0 for i in range(11))
     rib.info = [0 for i in range( 5)]
     rib.dptr = [0 for i in range(16)]    
-    vprint("""step: ● redo the DATA8 walk (since we now trust the new MFD files) """)
-    os.chdir( kit.rootpath ) # redundant reminder
-    track_next = 1
-    dirlist = os.listdir( "." )
-    dirlist.sort()
+
     cnt = 0
-    for dir in dirlist:
-        match = pat.ppn.match( dir )
-        if not match : continue
-        filelist = os.listdir( './'+dir )
-        filelist = [f.replace("_"," ") for f in filelist ]
-        filelist.sort()
-        filelist = [f.replace(" ","_") for f in filelist ]
-        for dotfil in filelist:
-            hit = pat.dotnam.match( dotfil )
-            if not hit : continue
-            path = './'+dir+'/'+dotfil
-            data8 = kit.data8_dict[ path ]
-            size = os.path.getsize( path ) // 8
-            track_first = track_next
-            track_count = (size + 2303) // 2304
-            track_next = track_first + track_count
-            vprint("{:6} {:24} {:6} {:3} {:6} {:3}".format( size, path, *kit.fat[ path ], track_first, track_count ))
+    for o in kit.fat:
+        cnt += 1
+        data8 = kit.data8_dict[ o.path ]
+        size = os.path.getsize( o.path ) // 8
             
-            # Initialize the prime RIB for this file
-            rib.filnam = int(data8.fil6b,8)
-            rib.ext    = int(data8.ext6b,8) << 18
-            rib.prot   = 0
-            rib.ppn    = int(data8.ppn6b,8)
-            rib.location = track_first
-            rib.filesize = size
-            rib.ref_date = 0
-            rib.dmp_date = 0
-            rib.satid = 0o3164236
-            f = open(path,'rb')
-            group_count, track_final = divmod( track_count, 32 )
-            tracks = [i for i in range(track_first,track_next)]
-            groups = [tracks[i+0:i+32] for i in range(0,len(tracks),32)]
-            q = 0
-            p = 32
-            for g in groups :
-                table = g + [0 for i in range(32-len(g))]
-                rib.dptr = [((table[i]<<18)+table[i+1]) for i in range(0,32,2)] # Big endian half words
-                rib.group_one_relative = 1 + q*32*18 # SAIL WAITS mickey mouse magic number
-                if p < len(tracks):
-                    rib.next_group_track = tracks[p]
-                else:
-                    rib.next_group_track = 0
-                q += 1
-                p += 32                
-                for t in g:
-                    buf = f.read(2304*8)
-                    ribbon = struct.pack("32Q", rib.filnam, rib.ext, rib.prot, rib.ppn,
-                                         rib.location, rib.filesize, rib.ref_date, rib.dmp_date,
-                                         rib.group_one_relative, rib.next_group_track,
-                                         rib.satid, *rib.info, *rib.dptr )
-                    payload = buf + bytes(8*2304 - len(buf))
-                    dasd.write( ribbon + payload )                
-            f.close()
-            cnt += 1
-            vprint("file#{:3} {:6} bytes {:6} words".format( cnt, len(buf), len(buf)//8 ))
+        # Initialize the prime RIB for this file
+        rib.filnam = int(data8.fil6b,8)
+        rib.ext    = int(data8.ext6b,8) << 18
+        rib.prot   = 0
+        rib.ppn    = int(data8.ppn6b,8)
+        rib.location =      o.track
+        rib.filesize = size
+        rib.ref_date = 0
+        rib.dmp_date = 0
+        rib.satid = 0o3164236 if rib.ppn==0o21000021 else 0
+            
+        f = open( o.path, 'rb' )
+        group_count, track_final = divmod( o.tracks, 32 )
+        tracks = [i for i in range( o.track, o.track + o.tracks )]
+        groups = [tracks[i+0:i+32] for i in range(0,len(tracks),32)]
+        q = 0
+        p = 32
+        for g in groups :
+            table = g + [0 for i in range(32-len(g))]
+            rib.dptr = [((table[i]<<18)+table[i+1]) for i in range(0,32,2)] # Big endian half words
+            rib.group_one_relative = 1 + q*32*18 # SAIL WAITS mickey mouse magic number
+            if p < len(tracks):
+                rib.next_group_track = tracks[p]
+            else:
+                rib.next_group_track = 0
+            q += 1
+            p += 32                
+            for t in g:
+                buf = f.read(2304*8)
+                ribbon = struct.pack("32Q", rib.filnam, rib.ext, rib.prot, rib.ppn,
+                                     rib.location, rib.filesize, rib.ref_date, rib.dmp_date,
+                                     rib.group_one_relative, rib.next_group_track,
+                                     rib.satid, *rib.info, *rib.dptr )
+                payload = buf + bytes(8*2304 - len(buf))
+                dasd.write( ribbon + payload )                
+        f.close()
+        gstring = ["","{} groups".format(o.groups)][ o.groups > 1 ]
+        vprint("{:6}.        {:24}  in {:4} track{} starting at track #{:06} {}".
+               format(cnt,
+                      o.path[2:],
+                      o.tracks, "s "[o.tracks==1],
+                      o.track, gstring ))
+            
     """ Finished """
     dasd.close()
     print("="*86+"\ndone: ▶ maud( {} ); done.".format(kit.path))

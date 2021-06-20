@@ -156,9 +156,9 @@ read_track(int track){
   unit = ( track / 15200 ) ;
   cyl  = ( track % 15200 ) / 19;
   hd   = ( track % 19    ) ;
-#define TRACKSIZE 13312
+#define TRACKSIZE 13312L
   // offset =  512 + (cyl*19 + hd) * TRACKSIZE;  fprintf(stderr,"fseek =%ld\n",offset);
-  q = fseek( disk[unit], 512 + (cyl*19 + hd) * TRACKSIZE, SEEK_SET ); if(q<0) perr("fseek");
+  q = fseek( disk[unit],(long)(512L + (cyl*19L + hd) * TRACKSIZE), SEEK_SET ); if(q<0) perr("fseek");
   // offset = ftell( disk[unit] );  fprintf(stderr,"ftell =%ld\n",offset);
   // Read one track record, 13312 bytes, as five fixed sized parts.
   if(1!=fread( &start_record,          13 ,   1,disk[unit])) perr("start record"); //     13. bytes
@@ -219,8 +219,8 @@ SAT_and_MFD_initialization(){
   for(i=0;i<1267;i++){
     SAT[i] = record[(57-32)+i];
   }
-  // Oversized allocation since file_count < used_track_count.
-  UFDslot = (UFD_t *)calloc( sathead.dskuse, sizeof(UFD_t) );
+  // Oversized allocation since file_count < used_track_count < last_track
+  UFDslot = (UFD_t *)calloc( sathead.lstblk, sizeof(UFD_t) );
   // Initialize the UFDslot[1] seed needed to read track #1 as a file fragment of "  1  1.UFD[1,1]".
   MFD.filnam = 000021000021L; // sixbit/  1  1/
   MFD.ext    = 0654644;       // sixbit/UFD/
@@ -481,7 +481,6 @@ data8_into_dasm( char *data8path, char *outpath ){
 
 void  
 data8_into_octal( char *data8path, char *outpath ){
-  // no frills conversion from the Stanford A.I. Lab ASCII into UTF-8 text.
   int i;  FILE *o; struct stat sblk;
   pdp10_word_t *buf8;
   off_t filesize; // fstat from linux file system is in bytes
@@ -502,6 +501,51 @@ data8_into_octal( char *data8path, char *outpath ){
   }
   fclose(o);
   free( buf8 );
+}
+
+void  
+data8_into_octal_ufd( char *data8path, char *outpath ){
+  int i;  FILE *o; struct stat sblk;
+  pdp10_word_t *buf8;
+  off_t filesize; // fstat from linux file system is in bytes
+  int m, byte_count, slot_cnt;
+  UFD_t *slot, ufd;
+  int cre_date, wrt_date, wrt_time;
+  char filnam[8], ext[4];
+  char created[18]; // example "1974-07-26"
+  char written[18]; // example "1974-07-26T12:34"
+
+  i = open(data8path,O_RDONLY);
+  if (i<0){ fprintf(stderr,"ERROR: input open file \"%s\" failed.\n",data8path); return; }
+  if(fstat(i,&sblk)==-1) perr("fstat");
+  filesize = sblk.st_size;
+  slot_cnt = filesize/32;
+  slot = (UFD_t *)calloc( slot_cnt, 32 );
+  byte_count = read(i,slot,filesize);
+  assert(byte_count == filesize);
+  close(i);
+  o = fopen(outpath,"w");
+  if (o<0){ fprintf(stderr,"ERROR: output open file \"%s\" failed.\n",outpath); return; }
+  for( m=0; m<slot_cnt; m++ ){
+    ufd = slot[ m ];
+    buf8 = (pdp10_word_t *)&ufd;
+    sixbit_uint_into_ascii_(    filnam,   ufd.filnam, sixbit_fname );
+    sixbit_halfword_into_ascii_(   ext,   ufd.ext,    sixbit_fname );
+    
+    cre_date =  ufd.creation_date;
+    wrt_date = (ufd.date_written_high << 12) | ufd.date_written_low;
+    wrt_time =  ufd.time_written;
+    
+    iso_date( created, cre_date, 0 );        created[10]=0;
+    iso_date( written, wrt_date, wrt_time);  written[16]=0;
+    fprintf( o, "%06o %06o | %6.6s    \n", buf8[0].half.left, buf8[0].half.right, filnam );
+    fprintf( o, "%06o %06o | ______.%3.3s  created %s          mode  %02o\n", buf8[1].half.left, buf8[1].half.right,    ext, created, ufd.mode );
+    fprintf( o, "%06o %06o |             written %s    prot %03o\n", buf8[2].half.left, buf8[2].half.right, written, ufd.prot );
+    fprintf( o, "%06o %06o |             track/x%06d\n", buf8[3].half.left, buf8[3].half.right, (int)ufd.track );
+    fprintf( o, "          .\n");
+  }
+  fclose(o);
+  free( slot );
 }
 
 // ===================================================================================================
@@ -606,19 +650,23 @@ pass_ex(){
 //              P       A       Y               L       O       A       D               H A N D L E R
 // ===================================================================================================
 void
-payload_handler(){
-  int i, slots=rib.count/4; // four PDP10 words per slot
-  if ( rib.count==0 ) return;
+payload_handler( int word_count ){
+  int i, slots = word_count/4; // four PDP10 words per slot
+  if ( ! slots ) return;
 
   // Directory content from the UFD files named *.UFD[1,1]
   if (  rib.prj==021 &&
         rib.prg==021 &&
-        rib.ext==0654644 ){    
+        rib.ext==0654644 ){
     // each slot of the MFD file "  1  1.UFD[1,1]" represents a PPN sub-directory
     if ( rib.filnam == 021000021L ){
       ppncnt = slots;
-    }    
-    memcpy((void *)&ufd,        // Each track 2304 words may have up to 576 UFDs
+    }
+    if ( rib.filnam == 00522127637163L ){ // [J17,SYS] UFD
+      i=0; // breakpoint target line
+    }
+    bzero( &ufd, sizeof(ufd) );
+    memcpy((void *)&ufd, // Each track of 2304 words may have up to 576 UFDs
            (void *)&record,
            slots * sizeof(UFD_t));
     // copy new slots into the global slot table
@@ -645,14 +693,16 @@ read_file(int slot){
   char prg[4], prj[4], filnam[8], ext[4], dir[32], file_name[32];
   char neo_mode_code="T1234567X9abcdeB"[ufd.mode]; // mode 0=T 8=X 15=B codes
   char data8path[128];
-  char *bx_postfix = ufd.mode==010 ? ".x" : ufd.mode==017 ? ".b" : "";
+  // char *bx_postfix = ufd.mode==010 ? ".x" : ufd.mode==017 ? ".b" : "";
   //
   int cre_date =  ufd.creation_date;
   int wrt_date = (ufd.date_written_high << 12) | ufd.date_written_low;
   int wrt_time =  ufd.time_written;
+  long ppn6bit;
   //
   char created[18]; // example "1974-07-26"
   char written[18]; // example "1974-07-26T12:34"
+  if ( ufd.filnam==0 ) return;
   iso_date( created, cre_date, 0 );        created[10]=0;
   iso_date( written, wrt_date, wrt_time);  written[16]=0;
   //
@@ -662,6 +712,9 @@ read_file(int slot){
   sixbit_halfword_into_ascii_(   ext,   ufd.ext,    sixbit_fname );
   sixbit_halfword_into_ascii_(   prj, prime.prj,    sixbit_ppn   );
   sixbit_halfword_into_ascii_(   prg, prime.prg,    sixbit_ppn   );
+  // Fixup neo_mode_code based on extensions
+  if(neo_mode_code=='B' && ufd.ext==0445560) neo_mode_code='X'; // *.DMP file
+  if(neo_mode_code=='B' && (ufd.ext==0 || ufd.ext==0464151 || ufd.ext==0435544)) neo_mode_code='T'; // blank or FAI or CMD
   // destination directory
   sprintf( dir,"./UCFS/%s.%s",prg,prj); omit_spaces( dir );
   if(stat( dir,&statbuf) && errno==ENOENT) mkdir(dir,0777);
@@ -671,6 +724,7 @@ read_file(int slot){
   // AND swap_halves of filenames in the [1,1] and [2,2]
   //    ./UCFS/1.1/Filename.UFD is Programmer-code then Project-code dot "UFD"
   //    ./UCFS/2.2/Filename.UFD is Programmer-code then Project-code dot "PLN" or dot "MSG"
+  ppn6bit = (rib.prj << 18) | rib.prg;
   if((rib.prj==021 && rib.prg==021) ||
      (rib.prj==022 && rib.prg==022)) {
     sprintf( file_name, "%3.3s%3.3s%s%s", filnam+3, filnam, (ufd.ext ? ".":""), ext );
@@ -678,11 +732,12 @@ read_file(int slot){
   }else{
     sprintf( file_name, "%s%s%s", filnam, (ufd.ext ? ".":""), ext );
   }
-  sprintf( data8path, "%s/.%s%s", dir, file_name, bx_postfix );
+  // sprintf( data8path, "%s/.%s%s", dir, file_name, bx_postfix );
+  sprintf( data8path, "%s/.%s", dir, file_name );
   omit_spaces( data8path );  
   // copy SAIL-WAITS file content from the CKD disk pack into model UCFS data8 path name
   {
-    int o, q, byte_count;
+    int o, q, byte_count, word_count;
     int i, words = prime.count;
     int filesize = 8*words; // byte_count
     int tt=0, tracks = words/2304 + (words%2304 ? 1:0);
@@ -717,8 +772,9 @@ read_file(int slot){
     o = open( data8path, O_CREAT | O_WRONLY, 0664 ); if(o<0)perr( data8path );
     for ( tt=0; tt < tracks; tt++ ){
       read_track( track_table[tt] );
-      payload_handler();
       byte_count = ( tt+1 < tracks ) ? 8*2304 : filesize - tt*8*2304;
+      word_count = byte_count / 8;
+      payload_handler( word_count ); // should be renamed "UFD_wrangler"
       q= write( o, record, byte_count ); if(q!=byte_count)perr("write");
       // memcpy( bufptr, record, byte_count ); bufptr += byte_count;
     }
@@ -741,7 +797,10 @@ read_file(int slot){
   case 'B':
   default:
     sprintf( path_b,"%s/%s.b", dir, file_name );  omit_spaces( path_b );  // binary
-    data8_into_octal( data8path, path_b );
+    if( ppn6bit == 021000021L )
+      data8_into_octal_ufd( data8path, path_b );
+    else
+      data8_into_octal( data8path, path_b );
     touch_file_modtime( path_b, written );
     break;
   }

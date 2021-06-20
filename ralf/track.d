@@ -95,14 +95,15 @@ struct SAT // Storage Allocation Table, sacred track zero
  */
 struct UFDent{ 
   mixin(bitfields!(ulong,"filnam",36,ulong,"",28));
-  mixin(bitfields!(uint,"date_written_high",3, // hack-pack high-order 3 bits, overflowed 4 Jan 1975.
+  mixin(bitfields!(
                    uint,"creation_date",15,    // Right side
-                   ulong,"ext",18,              // Left side
+                   uint,"date_written_high",3, // high-order 3 bits, overflowed 4 Jan 1975.
+                   ulong,"ext",18,             // Left side
                    uint,"",28));
-  mixin(bitfields!(uint,"date_written",12,      // Right side
+  mixin(bitfields!(uint,"date_written",12,     // Right side
                    uint,"time_written",11,
                    uint,"mode",4,
-                   uint,"prot",9,               // Left side
+                   uint,"prot",9,              // Left side
                    uint,"",28));
   mixin(bitfields!(long,"track",36,
                    uint,"",28));

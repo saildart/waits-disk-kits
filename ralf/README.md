@@ -107,14 +107,14 @@ Maud re-builds the kitpath DASD file from the kitpath UCFS tree of files in the 
 Next the DASD may be *used* directly by some PDP-10 simulation software (for example the dorunrun)
 or it can be further converted to IBM CKD formated disk packs by
 
-**DASD_into_chickadee** { your kit path }
+**DASD\_into\_chickadee** { kit\_path }
 
 The CKD packs (for example pack named 0.ckd ) may be *used* by other PDP-10
 emulation software (for example SIMKA).
 Emulation made changes to the CKD pack content
 can be converted onward to the Linux UCFS model by running
 
-**chickadee_into_UCFS** { your kit path }
+**chickadee\_into\_UCFS** { kit\_path }
 
 And back again by maud.
 

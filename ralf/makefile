@@ -72,13 +72,25 @@ fetch:
 	cp /var/tmp/ralf.csv $$KIT\n"
 # ------------------------------------- #
 # misc make targets
-tbx:
+sql3:
+	sudo rm -f /var/tmp/ralf.csv
+	mysql --defaults-file=/home/bgb/.my.cnf.saildart < tbx3.sql
+	wc -l /var/tmp/ralf.csv
+tbx3:
+	cp /var/tmp/ralf.csv /KIT3
+	ralf /KIT3
+	DASD_into_chickadee /KIT3
+sql2:
 	sudo rm -f /var/tmp/ralf.csv
 	mysql --defaults-file=/home/bgb/.my.cnf.saildart < tbx.sql
 	@echo 'REMINDER: cp /var/tmp/ralf.csv /KIT2'
 	@echo '    then: ralf /KIT2'
 	@echo '    then: DASD_into_chickadee /KIT2'
-tbx79:
+tbx2:
+	cp /var/tmp/ralf.csv /KIT2
+	ralf /KIT2
+	DASD_into_chickadee /KIT2
+sql1:
 	sudo rm -f /var/tmp/ralf.csv
 	mysql --defaults-file=/home/bgb/.my.cnf.saildart < tbx79.sql
 	@echo 'REMINDER: cp /var/tmp/ralf.csv /KIT1'
@@ -88,9 +100,5 @@ tbx1:
 	cp /var/tmp/ralf.csv /KIT1
 	ralf /KIT1
 	DASD_into_chickadee /KIT1
-tbx2:
-	cp /var/tmp/ralf.csv /KIT2
-	ralf /KIT2
-	DASD_into_chickadee /KIT2
 # ------------------------------------- #
 # EOF
